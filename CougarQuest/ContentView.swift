@@ -12,20 +12,22 @@ import FirebaseFirestore
 import FirebaseStorage
 
 enum TabItem: CaseIterable, Identifiable {
-    case home, quests, profile
+    case home, quests, leaderboard, profile
     var id: Self { self }
     var title: String {
         switch self {
-        case .home:    return "Home"
-        case .quests:  return "Quests"
-        case .profile: return "Leaderboard"
+        case .home:        return "Home"
+        case .quests:      return "Quests"
+        case .leaderboard: return "Standings"
+        case .profile:     return "Profile"
         }
     }
     var icon: String {
         switch self {
-        case .home:    return "house.fill"
-        case .quests:  return "map.fill"
-        case .profile: return "chart.bar.fill"
+        case .home:        return "house.fill"
+        case .quests:      return "map.fill"
+        case .leaderboard: return "chart.bar.fill"
+        case .profile:     return "person.fill"
         }
     }
 }
@@ -136,15 +138,15 @@ struct FloatingTabBar: View {
                             generator.impactOccurred()
                             withAnimation { selectedTab = tab }
                         } label: {
-                            VStack(spacing: 6) {
+                            VStack(spacing: 4) {
                                 Image(systemName: tab.icon)
-                                    .font(.system(size: 20, weight: .semibold))
+                                    .font(.system(size: 18, weight: .semibold))
                                 Text(tab.title)
-                                    .font(.footnote)
+                                    .font(.system(size: 10))
                             }
                             .foregroundColor(selectedTab == tab ? .cougarBlue : .primary)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 80)  // fixed bottom slot
+                            .frame(height: 80)
                         }
                     }
                 }
@@ -158,6 +160,7 @@ struct FloatingTabBar: View {
 
 struct ContentView: View {
     @EnvironmentObject var profileVM: ProfileViewModel
+    @EnvironmentObject var authVM: AuthViewModel
     @State private var selectedTab: TabItem = .home
     @State private var isKeyboardVisible: Bool = false
     @State private var selectedQuest: Quest? = nil
@@ -210,13 +213,21 @@ struct ContentView: View {
     private var mainContent: some View {
         switch selectedTab {
         case .home:
-            HomeView(isQuestOpen: $isHomeQuestOpen, selectedQuest: $selectedQuest) // Updated
+            NavigationStack {
+                HomeView(isQuestOpen: $isHomeQuestOpen, selectedQuest: $selectedQuest)
+            }
         case .quests:
             NavigationStack {
                 QuestsView(selectedQuest: $selectedQuest)
             }
-        case .profile:
+        case .leaderboard:
             LeaderboardView()
+        case .profile:
+            if profileVM.isAdmin {
+                SortingView()
+            } else {
+                ProfileView()
+            }
         }
     }
 

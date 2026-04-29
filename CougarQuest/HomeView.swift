@@ -42,8 +42,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
+        ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     // MARK: Hero Section
                     ZStack(alignment: .bottomLeading) {
@@ -79,6 +78,16 @@ struct HomeView: View {
                     .frame(height: 400)
                     .ignoresSafeArea(edges: .top)
                     
+                    // MARK: Team Progress Card
+                    if !isLoading && !visibleQuests.isEmpty {
+                        TeamProgressCard(
+                            profileVM: profileVM,
+                            completedCount: completedQuestTitles.count,
+                            totalCount: visibleQuests.count
+                        )
+                        .padding(.horizontal)
+                    }
+
                     // MARK: For You Section
                     if isLoading {
                         // Skeleton loader for "For You"
@@ -156,7 +165,6 @@ struct HomeView: View {
                 }
             }
             .ignoresSafeArea(edges: .top)
-        }
         .onAppear {
             FirebaseService.shared.fetchQuests { fetched, error in
                 if let fetched = fetched {
@@ -498,6 +506,88 @@ struct CompletedSectionView: View {
                 .padding(.horizontal)
             }
         }
+    }
+}
+
+// MARK: - Team Progress Card
+
+struct TeamProgressCard: View {
+    let profileVM: ProfileViewModel
+    let completedCount: Int
+    let totalCount: Int
+
+    private var teamName: String {
+        if !profileVM.teamName.isEmpty { return profileVM.teamName }
+        let parts = [profileVM.firstName, profileVM.lastName].filter { !$0.isEmpty }
+        let dad = parts.joined(separator: " ")
+        return dad.isEmpty ? "Your Team" : "\(dad) Family"
+    }
+
+    private var members: [String] {
+        var list: [String] = []
+        if !profileVM.grandpa.isEmpty { list.append(profileVM.grandpa) }
+        list.append(contentsOf: profileVM.sons.filter { !$0.isEmpty })
+        return list
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(teamName)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    if !members.isEmpty {
+                        Text(members.joined(separator: " · "))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text("\(completedCount)")
+                            .font(.title2)
+                            .fontWeight(.black)
+                            .foregroundColor(.cougarBlue)
+                        Text("/ \(totalCount)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    Text("quests done")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.cougarBlue.opacity(0.15))
+                        .frame(height: 8)
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.cougarBlue)
+                        .frame(
+                            width: totalCount > 0
+                                ? geo.size.width * CGFloat(completedCount) / CGFloat(totalCount)
+                                : 0,
+                            height: 8
+                        )
+                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: completedCount)
+                }
+            }
+            .frame(height: 8)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+        )
     }
 }
 
