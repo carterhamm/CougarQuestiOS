@@ -14,8 +14,7 @@ import FirebaseAuth
 import FirebaseFirestore
 
 struct HomeView: View {
-    @Binding var isQuestOpen: Bool
-    @Binding var selectedQuest: Quest? // Added binding
+    @ObservedObject var tabStore = TabPresentationStore.shared
     @State private var quests: [Quest] = []
     @State private var completedQuestTitles: [String] = []
     @State private var isLoading: Bool = true
@@ -110,9 +109,7 @@ struct HomeView: View {
                     } else {
                         ForYouSectionView(
                             quests: forYouQuests,
-                            namespace: namespace,
-                            isQuestOpen: $isQuestOpen,
-                            selectedQuest: $selectedQuest // Pass binding
+                            namespace: namespace
                         )
                         .environmentObject(profileVM)
                     }
@@ -138,9 +135,7 @@ struct HomeView: View {
                     } else {
                         CompletedSectionView(
                             quests: completedQuestsList,
-                            namespace: namespace,
-                            isQuestOpen: $isQuestOpen,
-                            selectedQuest: $selectedQuest // Pass binding
+                            namespace: namespace
                         )
                         .environmentObject(profileVM)
                     }
@@ -211,8 +206,8 @@ struct HomeView: View {
 struct ForYouSectionView: View {
     let quests: [Quest]
     let namespace: Namespace.ID
-    @Binding var isQuestOpen: Bool
-    @Binding var selectedQuest: Quest? // Added binding
+    @ObservedObject var tabStore = TabPresentationStore.shared
+
     @EnvironmentObject var profileVM: ProfileViewModel
 
     var body: some View {
@@ -227,7 +222,7 @@ struct ForYouSectionView: View {
                     ForEach(quests) { quest in
                         if #available(iOS 18, *) {
                             NavigationLink {
-                                QuestView(quest: quest, isQuestOpen: $isQuestOpen)
+                                QuestView(quest: quest)
                                     .navigationTransition(.zoom(sourceID: "\(quest.id)", in: namespace))
                             } label: {
                                 ZStack(alignment: .bottomLeading) {
@@ -284,14 +279,17 @@ struct ForYouSectionView: View {
                             }
                             .simultaneousGesture(
                                 TapGesture().onEnded {
-                                    selectedQuest = quest // Set selected quest
+                                    tabStore.selectedQuest = quest; print("🟢 QUEST TAP: \(quest.title)")
                                     let generator = UIImpactFeedbackGenerator(style: .rigid)
                                     generator.impactOccurred()
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                        tabStore.isHomeQuestOpen = true
+                                    }
                                 }
                             )
                         } else {
                             NavigationLink {
-                                QuestView(quest: quest, isQuestOpen: $isQuestOpen)
+                                QuestView(quest: quest)
                             } label: {
                                 ZStack(alignment: .bottomLeading) {
                                     if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
@@ -346,8 +344,12 @@ struct ForYouSectionView: View {
                             }
                             .simultaneousGesture(
                                 TapGesture().onEnded {
+                                    tabStore.selectedQuest = quest; print("🟢 QUEST TAP: \(quest.title)")
                                     let generator = UIImpactFeedbackGenerator(style: .rigid)
                                     generator.impactOccurred()
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                        tabStore.isHomeQuestOpen = true
+                                    }
                                 }
                             )
                         }
@@ -362,8 +364,8 @@ struct ForYouSectionView: View {
 struct CompletedSectionView: View {
     let quests: [Quest]
     let namespace: Namespace.ID
-    @Binding var isQuestOpen: Bool
-    @Binding var selectedQuest: Quest? // Added binding
+    @ObservedObject var tabStore = TabPresentationStore.shared
+
     @EnvironmentObject var profileVM: ProfileViewModel
 
     var body: some View {
@@ -377,7 +379,7 @@ struct CompletedSectionView: View {
                     ForEach(quests) { quest in
                         if #available(iOS 18, *) {
                             NavigationLink {
-                                QuestView(quest: quest, isQuestOpen: $isQuestOpen)
+                                QuestView(quest: quest)
                                     .navigationTransition(.zoom(sourceID: "\(quest.id)", in: namespace))
                             } label: {
                                 ZStack(alignment: .bottomLeading) {
@@ -434,14 +436,17 @@ struct CompletedSectionView: View {
                             }
                             .simultaneousGesture(
                                 TapGesture().onEnded {
-                                    selectedQuest = quest // Set selected quest
+                                    tabStore.selectedQuest = quest; print("🟢 QUEST TAP: \(quest.title)")
                                     let generator = UIImpactFeedbackGenerator(style: .rigid)
                                     generator.impactOccurred()
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                        tabStore.isHomeQuestOpen = true
+                                    }
                                 }
                             )
                         } else {
                             NavigationLink {
-                                QuestView(quest: quest, isQuestOpen: $isQuestOpen)
+                                QuestView(quest: quest)
                             } label: {
                                 ZStack(alignment: .bottomLeading) {
                                     if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
@@ -496,8 +501,12 @@ struct CompletedSectionView: View {
                             }
                             .simultaneousGesture(
                                 TapGesture().onEnded {
+                                    tabStore.selectedQuest = quest; print("🟢 QUEST TAP: \(quest.title)")
                                     let generator = UIImpactFeedbackGenerator(style: .rigid)
                                     generator.impactOccurred()
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                        tabStore.isHomeQuestOpen = true
+                                    }
                                 }
                             )
                         }
@@ -532,19 +541,24 @@ struct TeamProgressCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(teamName)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                    if !members.isEmpty {
-                        Text(members.joined(separator: " · "))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
+                    HStack {
+                        Text(teamName)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                        if !members.isEmpty {
+                            Text(members.joined(separator: " · "))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
+                .frame(maxHeight: .infinity, alignment: .center)
+
                 Spacer()
+
                 VStack(alignment: .trailing, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Text("\(completedCount)")
@@ -552,7 +566,7 @@ struct TeamProgressCard: View {
                             .fontWeight(.black)
                             .foregroundColor(.cougarBlue)
                         Text("/ \(totalCount)")
-                            .font(.subheadline)
+                            .font(.title2)
                             .foregroundColor(.secondary)
                     }
                     Text("quests done")
@@ -560,41 +574,38 @@ struct TeamProgressCard: View {
                         .foregroundColor(.secondary)
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.cougarBlue.opacity(0.15))
+                    Color.clear
                         .frame(height: 8)
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.cougarBlue)
+                        .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 4))
+                    Color.clear
                         .frame(
                             width: totalCount > 0
                                 ? geo.size.width * CGFloat(completedCount) / CGFloat(totalCount)
                                 : 0,
                             height: 8
                         )
+                        .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: RoundedRectangle(cornerRadius: 4))
                         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: completedCount)
                 }
             }
             .frame(height: 8)
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                )
+        .adaptiveGlassEffect(
+            in: RoundedRectangle(cornerRadius: 20),
+            strokeColor: Color.gray.opacity(0.2),
+            strokeWidth: 1
         )
     }
 }
 
 struct HomeView_Previews: PreviewProvider {
-    @State static var isQuestOpen = false
     static var previews: some View {
-        HomeView(isQuestOpen: $isQuestOpen, selectedQuest: .constant(nil))
+        HomeView()
             .environmentObject(ProfileViewModel())
     }
 }

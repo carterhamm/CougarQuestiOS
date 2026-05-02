@@ -10,8 +10,17 @@ import UIKit
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
+import Kingfisher
 
-enum TabItem: CaseIterable, Identifiable {
+final class TabPresentationStore: ObservableObject {
+    static let shared = TabPresentationStore()
+    @Published var selectedTab: TabItem = .home
+    @Published var selectedQuest: Quest? = nil
+    @Published var isHomeQuestOpen: Bool = false
+    private init() {}
+}
+
+enum TabItem: CaseIterable, Identifiable, Hashable {
     case home, quests, leaderboard, profile
     var id: Self { self }
     var title: String {
@@ -33,144 +42,244 @@ enum TabItem: CaseIterable, Identifiable {
 }
 
 struct FloatingTabBar: View {
-    @Binding var selectedTab: TabItem
-    @Binding var selectedQuest: Quest?
+    @ObservedObject var tabStore = TabPresentationStore.shared
     @Namespace private var animation
+    @State private var dragOffset: CGFloat = 0
+    @State private var sheetQuest: Quest? = nil
+    @State private var pillDragX: CGFloat? = nil
+    @State private var isPillDragging: Bool = false
 
-    /// Capsule expands vertically; bottom edge fixed.
     private var capsuleHeight: CGFloat {
-        (selectedTab == .quests && selectedQuest != nil)
-            ? UIScreen.main.bounds.height * 0.35
-            : 80
+        (tabStore.selectedTab == .quests && tabStore.selectedQuest != nil)
+            ? UIScreen.main.bounds.height * 0.36
+            : 68
+    }
+
+    private func dismissExpanded() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            tabStore.selectedQuest = nil
+            dragOffset = 0
+        }
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // 1) Background capsule
-            RoundedRectangle(cornerRadius: 50)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 50)
-                        .stroke(Color.gray.opacity(0.5), lineWidth: 0.5)
-                )
+            Color.clear
                 .frame(height: capsuleHeight)
+                .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 50))
+                .allowsHitTesting(false)
 
-            // 2) Quest info in the extra space above the bottom 80 pts
-            if selectedTab == .quests, let quest = selectedQuest {
-                VStack(alignment: .leading, spacing: 8) {
-                    Capsule()
-                        .frame(width: 40, height: 5)
-                        .foregroundColor(Color.gray.opacity(0.5))
-                        .offset(y: -15)
-                        .frame(maxWidth: .infinity)
-                        // Tap or drag to collapse
-                        .onTapGesture {
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
-                            withAnimation { selectedQuest = nil }
-                        }
-                        .gesture(
-                            DragGesture(minimumDistance: 10)
-                                .onEnded { _ in
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred()
-                                    withAnimation { selectedQuest = nil }
-                                }
-                        )
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(quest.title)
-                            .font(.headline)
-                            .fontWeight(.bold)
-                        
-                        Text(quest.description)
-                            .font(.body)
-                            .lineLimit(3)
-                        
-                        if let url = URL(string: quest.mapsLink) {
-                            Link(destination: url) {
-                                HStack(spacing: 4) {
-                                    Text("Open in Maps")
-                                    Image(systemName: "map.fill")
-                                }
-                                .font(.callout)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .padding(8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.cougarBlue)
-                                )
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 9)
-
-                    Spacer()
-                }
-                .padding()
-                // Restrict to only the new “headroom” and align at its top
-                .frame(height: capsuleHeight - 80, alignment: .top)
-                // shift up so it's closer to the capsule’s top edge
-                .offset(y: -70)
+            if tabStore.selectedTab == .quests, let quest = tabStore.selectedQuest {
+                expandedQuestContent(quest: quest)
+                    .frame(height: capsuleHeight - 80, alignment: .top)
+                    .offset(y: -70 + dragOffset)
             }
 
-            // 3) White pill + icons/titles locked into the bottom 80 pts
-            ZStack(alignment: .leading) {
-                // White pill behind current tab
-                GeometryReader { geo in
-                    let tabs = TabItem.allCases
-                    let cellWidth = (geo.size.width - 25) / CGFloat(tabs.count)
-                    RoundedRectangle(cornerRadius: 50)
-                        .fill(Color.white)
-                        .frame(width: cellWidth, height: 60)
-                        .shadow(color: .black.opacity(0.15), radius: 15, x: 0, y: 5)
-                        .offset(x: 12 + cellWidth * CGFloat(tabs.firstIndex(of: selectedTab) ?? 0))
-                        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: selectedTab)
-                }
-                .frame(height: 60)
+            GeometryReader { geo in
+                let tabs = TabItem.allCases
+                let cellWidth = (geo.size.width - 12) / CGFloat(tabs.count)
+                let restingX = 6 + cellWidth * CGFloat(tabs.firstIndex(of: tabStore.selectedTab) ?? 0)
+                let pillX: CGFloat = {
+                    if let x = pillDragX {
+                        return min(max(x - cellWidth / 2, 6), geo.size.width - 6 - cellWidth)
+                    }
+                    return restingX
+                }()
 
-                // Icons & titles
-                HStack(spacing: 0) {
-                    ForEach(TabItem.allCases) { tab in
-                        Button {
-                            let generator = UIImpactFeedbackGenerator(style: .heavy)
-                            generator.impactOccurred()
-                            withAnimation { selectedTab = tab }
-                        } label: {
-                            VStack(spacing: 4) {
+                ZStack(alignment: .leading) {
+                    Color.clear
+                        .frame(width: cellWidth, height: 56)
+                        .adaptiveGlassEffectTinted(color: Color.cougarBlue.opacity(0.9), in: RoundedRectangle(cornerRadius: 50))
+                        .scaleEffect(isPillDragging ? 0.92 : 1)
+                        .shadow(color: Color.cougarBlue.opacity(isPillDragging ? 0.5 : 0.25), radius: isPillDragging ? 24 : 15, x: 0, y: 5)
+                        .offset(x: pillX)
+                        .animation(.interactiveSpring(response: 0.25, dampingFraction: 0.75), value: pillX)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: tabStore.selectedTab)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPillDragging)
+
+                    HStack(spacing: 0) {
+                        ForEach(TabItem.allCases) { tab in
+                            VStack(spacing: 2) {
                                 Image(systemName: tab.icon)
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .font(.system(size: 16, weight: .semibold))
                                 Text(tab.title)
                                     .font(.system(size: 10))
                             }
-                            .foregroundColor(selectedTab == tab ? .cougarBlue : .primary)
+                            .foregroundColor(tabStore.selectedTab == tab ? .white : .primary)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 80)
+                            .frame(height: 68)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                                generator.impactOccurred()
+                                if tab != .quests { tabStore.selectedQuest = nil }
+                                if tab != .home { tabStore.isHomeQuestOpen = false }
+                                withAnimation { tabStore.selectedTab = tab }
+                            }
                         }
                     }
+                    .padding(.horizontal, 6)
                 }
-                .padding(.horizontal, 12)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 18)
+                        .onChanged { value in
+                            if !isPillDragging {
+                                isPillDragging = true
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.impactOccurred()
+                            }
+                            pillDragX = value.location.x
+                            let index = Int(round((value.location.x - 6 - cellWidth / 2) / cellWidth))
+                            let clamped = max(0, min(tabs.count - 1, index))
+                            if tabs[clamped] != tabStore.selectedTab {
+                                tabStore.selectedTab = tabs[clamped]
+                                let generator = UIImpactFeedbackGenerator(style: .soft)
+                                generator.impactOccurred()
+                            }
+                        }
+                        .onEnded { _ in
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                isPillDragging = false
+                                pillDragX = nil
+                            }
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
+                        }
+                )
             }
+            .frame(height: 68)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 20)
+    }
+
+    @ViewBuilder
+    private func expandedQuestContent(quest: Quest) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(spacing: 0) {
+                Capsule()
+                    .fill(Color.black)
+                    .frame(width: 50, height: 5)
+            }
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture { dismissExpanded() }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if value.translation.height > 0 {
+                            dragOffset = value.translation.height
+                        }
+                    }
+                    .onEnded { value in
+                        if value.translation.height > 50 {
+                            dismissExpanded()
+                        } else {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                dragOffset = 0
+                            }
+                        }
+                    }
+            )
+
+            ZStack(alignment: .bottomLeading) {
+                if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
+                    KFImage(url)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 96)
+                        .clipped()
+                } else {
+                    Color.gray.opacity(0.3)
+                        .frame(height: 96)
+                }
+                LinearGradient(
+                    colors: [Color.black.opacity(0.65), Color.clear],
+                    startPoint: .bottom,
+                    endPoint: .center
+                )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(quest.title)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                    Text(quest.address)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.85))
+                        .lineLimit(1)
+                }
+                .padding(12)
+            }
+            .frame(height: 96)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+
+            Text(quest.description)
+                .font(.subheadline)
+                .foregroundColor(.primary.opacity(0.85))
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 8) {
+                Button {
+                    sheetQuest = quest
+                } label: {
+                    Text("View Quest")
+                        .font(.callout)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.cougarBlue)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .adaptiveGlassEffectTinted(color: Color.white.opacity(0.5), in: RoundedRectangle(cornerRadius: 22))
+                }
+                .buttonStyle(.plain)
+
+                if let url = URL(string: quest.mapsLink) {
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "location.fill")
+                            Text("Navigate")
+                        }
+                        .font(.callout)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .adaptiveGlassEffectTinted(color: Color.cougarBlue.opacity(0.9), in: RoundedRectangle(cornerRadius: 22))
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 4)
+        .sheet(item: $sheetQuest) { q in
+            NavigationStack {
+                QuestView(quest: q)
+            }
+        }
     }
 }
 
 struct ContentView: View {
     @EnvironmentObject var profileVM: ProfileViewModel
     @EnvironmentObject var authVM: AuthViewModel
-    @State private var selectedTab: TabItem = .home
+    @ObservedObject private var tabStore = TabPresentationStore.shared
+    @State private var selectedTabLocal: TabItem = .home
+    @State private var isHomeQuestOpenLocal: Bool = false
     @State private var isKeyboardVisible: Bool = false
-    @State private var selectedQuest: Quest? = nil
-    @State private var isHomeQuestOpen: Bool = false
     @State private var showActionButtons: Bool = false
     @State private var showImagePicker = false
     @State private var imagePickerSource: UIImagePickerController.SourceType = .photoLibrary
     @State private var imageToUpload: UIImage?
 
-    // MARK: - Upload helper
+    private let islandAnimation = Animation.spring(response: 0.65, dampingFraction: 0.65, blendDuration: 0.85)
+
     private func uploadPhoto(_ image: UIImage, for quest: Quest) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         let path = "\(uid)/\(quest.id ?? quest.title)/photo.png"
@@ -199,106 +308,97 @@ struct ContentView: View {
             DispatchQueue.main.async {
                 imageToUpload = nil
                 withAnimation {
-                    isHomeQuestOpen = false
-                    selectedQuest = nil
+                    tabStore.isHomeQuestOpen = false
+                    tabStore.selectedQuest = nil
                 }
             }
         }
     }
 
-    // Spring animation for capsule height changes
-    private let islandAnimation = Animation.spring(response: 0.65, dampingFraction: 0.65, blendDuration: 0.85)
-
     @ViewBuilder
     private var mainContent: some View {
-        switch selectedTab {
-        case .home:
+        TabView(selection: $selectedTabLocal) {
             NavigationStack {
-                HomeView(isQuestOpen: $isHomeQuestOpen, selectedQuest: $selectedQuest)
+                HomeView()
             }
-        case .quests:
+            .tag(TabItem.home)
+
             NavigationStack {
-                QuestsView(selectedQuest: $selectedQuest)
+                QuestsView()
             }
-        case .leaderboard:
-            LeaderboardView()
-        case .profile:
-            if profileVM.isAdmin {
-                SortingView()
-            } else {
-                ProfileView()
+            .tag(TabItem.quests)
+
+            NavigationStack {
+                LeaderboardView()
             }
+            .tag(TabItem.leaderboard)
+
+            NavigationStack {
+                if profileVM.isAdmin {
+                    SortingView()
+                } else {
+                    ProfileView()
+                }
+            }
+            .tag(TabItem.profile)
+        }
+        .onAppear {
+            UITabBar.appearance().isHidden = true
         }
     }
 
     @ViewBuilder
     private var bottomOverlay: some View {
+        let _ = print("📍 bottomOverlay recompute: selectedTabLocal=\(selectedTabLocal), isHomeQuestOpenLocal=\(isHomeQuestOpenLocal), showActionButtons=\(showActionButtons)")
         let fullWidth = UIScreen.main.bounds.width - 40
         let safeArea = UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.windows.first?.safeAreaInsets.bottom }
             .first ?? 15
 
-        if selectedTab == .home {
+        if selectedTabLocal == .home {
             ZStack(alignment: .bottom) {
                 HStack(spacing: 0) {
-                    RoundedRectangle(cornerRadius: 40)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 40)
-                                .stroke(Color.gray.opacity(0.5), lineWidth: 0.5)
-                        )
-                        .frame(width: isHomeQuestOpen ? 80 : fullWidth, height: 80)
+                    Color.clear
+                        .frame(width: isHomeQuestOpenLocal ? 68 : fullWidth, height: 68)
+                        .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 40))
+                        .allowsHitTesting(false)
                         .padding(.horizontal, 20)
-                        .padding(.bottom, safeArea)
-                        .offset(y: 12)
-                        .animation(islandAnimation, value: isHomeQuestOpen)
+                        .padding(.bottom, safeArea * 0.3)
+                        .offset(y: 26)
+                        .animation(islandAnimation, value: isHomeQuestOpenLocal)
                     Spacer()
                 }
-                if isHomeQuestOpen && showActionButtons {
-                    // ... copy only the HStack of buttons (restore, photo, camera) here ...
-                    let buttonSize: CGFloat = 80
+                if isHomeQuestOpenLocal && showActionButtons {
+                    let buttonSize: CGFloat = 68
                     let spacing: CGFloat = 12
                     let cameraWidth = fullWidth - (buttonSize * 2) - (spacing * 2)
                     HStack(spacing: spacing) {
-                        // 1) Restore...
                         Button {
                             let generator = UIImpactFeedbackGenerator(style: .heavy)
                             generator.impactOccurred()
-                            withAnimation(islandAnimation) { isHomeQuestOpen = false }
+                            withAnimation(islandAnimation) { tabStore.isHomeQuestOpen = false }
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 28))
+                                .font(.system(size: 24, weight: .semibold))
                                 .foregroundColor(Color(UIColor { trait in
                                     trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
                                 }))
                                 .frame(width: buttonSize, height: buttonSize)
                         }
-                        // 2) Photo library...
                         Button {
                             let generator = UIImpactFeedbackGenerator(style: .heavy)
                             generator.impactOccurred()
                             imagePickerSource = .photoLibrary
                             showImagePicker = true
                         } label: {
-                            ZStack {
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.gray.opacity(0.5), lineWidth: 0.5)
-                                    )
-                                Image(systemName: "photo.on.rectangle")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(Color(UIColor { trait in
-                                        trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
-                                    }))
-                            }
-                            .frame(width: buttonSize, height: buttonSize)
-                            .opacity(showActionButtons ? 1 : 0)
-                            .offset(y: showActionButtons ? 0 : 20)
-                            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: showActionButtons)
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.system(size: 24, weight: .semibold))
+                                .foregroundColor(Color(UIColor { trait in
+                                    trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
+                                }))
+                                .frame(width: buttonSize, height: buttonSize)
+                                .adaptiveGlassEffect(in: Circle())
                         }
-                        // 3) Camera...
                         Button {
                             let generator = UIImpactFeedbackGenerator(style: .heavy)
                             generator.impactOccurred()
@@ -306,72 +406,56 @@ struct ContentView: View {
                             showImagePicker = true
                         } label: {
                             Image(systemName: "camera.fill")
-                                .font(.system(size: 28))
+                                .font(.system(size: 24, weight: .semibold))
                                 .foregroundColor(.white)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .frame(width: cameraWidth, height: buttonSize)
+                                .adaptiveGlassEffectTinted(color: .cougarBlue, in: RoundedRectangle(cornerRadius: 40))
                         }
-                        .frame(width: cameraWidth, height: buttonSize)
-                        .background(
-                            RoundedRectangle(cornerRadius: 40)
-                                .fill(Color.cougarBlue)
-                        )
-                        .opacity(showActionButtons ? 1 : 0)
-                        .offset(y: showActionButtons ? 0 : 20)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: showActionButtons)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, safeArea)
-                    .offset(y: 12)
+                    .padding(.bottom, safeArea * 0.3)
+                    .offset(y: 26)
+                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
                 }
-                FloatingTabBar(
-                    selectedTab: $selectedTab,
-                    selectedQuest: $selectedQuest
-                )
-                .padding(.bottom, safeArea)
-                .offset(y: 12)
-                .opacity(isHomeQuestOpen ? 0 : 1)
-                .animation(islandAnimation, value: isHomeQuestOpen)
+                FloatingTabBar()
+                    .padding(.bottom, safeArea * 0.3)
+                    .offset(y: 26)
+                    .opacity(isHomeQuestOpenLocal ? 0 : 1)
+                    .animation(islandAnimation, value: isHomeQuestOpenLocal)
             }
         } else {
-            FloatingTabBar(
-                selectedTab: $selectedTab,
-                selectedQuest: $selectedQuest
-            )
-            .padding(.bottom, safeArea)
-            .offset(y: 12)
-            .animation(islandAnimation, value: selectedTab == .quests && selectedQuest != nil)
+            FloatingTabBar()
+                .padding(.bottom, safeArea * 0.3)
+                .offset(y: 26)
+                .animation(islandAnimation, value: selectedTabLocal == .quests && tabStore.selectedQuest != nil)
         }
     }
 
     var body: some View {
-        ZStack {
-            // MARK: Main content
+        ZStack(alignment: .bottom) {
             mainContent
+            bottomOverlay
+                .zIndex(100)
         }
-        .overlay(bottomOverlay, alignment: .bottom)
-        .onChange(of: selectedTab) { newTab in
-            if newTab != .quests {
-                selectedQuest = nil
+        .onReceive(tabStore.$selectedTab) { newTab in
+            print("📡 onReceive selectedTab → \(newTab) (isHomeQuestOpen=\(tabStore.isHomeQuestOpen))")
+            if tabStore.isHomeQuestOpen && newTab != .home {
+                print("📡 ignoring phantom tab change during morph")
+                tabStore.selectedTab = .home
+                return
             }
-            if newTab != .home {
-                isHomeQuestOpen = false
-            }
+            selectedTabLocal = newTab
         }
-        // Keyboard handling
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             isKeyboardVisible = true
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             isKeyboardVisible = false
         }
-        // Haptic feedback when a quest is selected
-        .onChange(of: selectedQuest != nil) { hasQuest in
-            if hasQuest {
-                let generator = UIImpactFeedbackGenerator(style: .soft)
-                generator.impactOccurred()
-            }
-        }
-        .onChange(of: isHomeQuestOpen) { open in
+        .onReceive(tabStore.$isHomeQuestOpen) { open in
+            print("🟡 onReceive isHomeQuestOpen → \(open) [before mirror: local=\(isHomeQuestOpenLocal)]")
+            isHomeQuestOpenLocal = open
+            print("🟦 isHomeQuestOpenLocal is now \(isHomeQuestOpenLocal)")
             if open {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
@@ -382,7 +466,7 @@ struct ContentView: View {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                     showActionButtons = false
                 }
-                selectedQuest = nil // Clear selected quest when quest view is dismissed
+                tabStore.selectedQuest = nil
             }
         }
         .sheet(isPresented: $showImagePicker) {
@@ -392,7 +476,7 @@ struct ContentView: View {
             )
         }
         .onChange(of: imageToUpload) { image in
-            if let quest = selectedQuest, let img = image {
+            if let quest = tabStore.selectedQuest, let img = image {
                 uploadPhoto(img, for: quest)
             }
         }

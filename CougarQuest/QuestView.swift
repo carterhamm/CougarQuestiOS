@@ -15,7 +15,6 @@ import FirebaseFirestore
 import FirebaseStorage
 import UIKit
 import AnyCodable
-import ConfettiSwiftUI
 
 import UIKit
 
@@ -72,7 +71,7 @@ struct RoundedCorners: Shape {
 }
 
 struct QuestView: View {
-    @Binding var isQuestOpen: Bool
+    @ObservedObject var tabStore = TabPresentationStore.shared
     @State private var region: MKCoordinateRegion
     @State private var isCompleted: Bool = false
     @Environment(\.colorScheme) var colorScheme
@@ -80,14 +79,12 @@ struct QuestView: View {
     @State private var showCameraPicker = false
     @State private var pickedImage: UIImage?
 
-    @State private var confettiCounter: Int = 0
     @State private var gradientColors: [Color] = [.black, .clear]
 
     var quest: Quest
 
-    init(quest: Quest, isQuestOpen: Binding<Bool>) {
+    init(quest: Quest) {
         self.quest = quest
-        self._isQuestOpen = isQuestOpen
         // Default to BYU Creamery location
         let defaultCenter = CLLocationCoordinate2D(latitude: 40.250106, longitude: -111.643463)
         // Attempt to extract latitude and longitude from the "ll" or "coordinate" query parameter
@@ -138,13 +135,13 @@ struct QuestView: View {
                         }
                         Firestore.firestore().collection("users").document(uid)
                             .updateData(["points": FieldValue.increment(reward)]) { _ in }
-                        withAnimation(.easeInOut) {
-                            isCompleted = true
-                            confettiCounter += 1
-                            let generator = UIImpactFeedbackGenerator(style: .heavy)
-                            generator.impactOccurred()
-                            // Dismiss the quest view
-                            isQuestOpen = false
+                        DispatchQueue.main.async {
+                            withAnimation(.easeInOut) {
+                                isCompleted = true
+                                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                                generator.impactOccurred()
+                                tabStore.isHomeQuestOpen = false
+                            }
                         }
                     }
                 }
@@ -295,14 +292,10 @@ struct QuestView: View {
                             .multilineTextAlignment(.center)
                             .padding()
                             .frame(width: UIScreen.main.bounds.width - 25, alignment: .center)
-                            .background(
-                                RoundedCorners(topLeft: 20, topRight: 20, bottomLeft: 20, bottomRight: 20)
-                                    .fill(.ultraThinMaterial)
-                            )
-                            .overlay(
-                                RoundedCorners(topLeft: 20, topRight: 20, bottomLeft: 20, bottomRight: 20)
-                                    .stroke(colorScheme == .dark ? Color(UIColor.darkGray) : Color(UIColor.lightGray), lineWidth: 1.2)
-                                    .padding(0.4)
+                            .adaptiveGlassEffect(
+                                in: RoundedRectangle(cornerRadius: 20),
+                                strokeColor: colorScheme == .dark ? Color(UIColor.darkGray) : Color(UIColor.lightGray),
+                                strokeWidth: 1.2
                             )
                             .padding(.horizontal)
                         
@@ -323,14 +316,10 @@ struct QuestView: View {
                                 .padding(EdgeInsets(top: 34, leading: 0, bottom: 8, trailing: 0))
                                 .frame(width: UIScreen.main.bounds.width - 25)
                                 .frame(minHeight: 80)
-                                .background(
-                                    RoundedCorners(topLeft: 0, topRight: 0, bottomLeft: 20, bottomRight: 20)
-                                        .fill(.ultraThinMaterial)
-                                )
-                                .overlay(
-                                    RoundedCorners(topLeft: 20, topRight: 20, bottomLeft: 20, bottomRight: 20)
-                                        .stroke(colorScheme == .dark ? Color(UIColor.darkGray) : Color(UIColor.lightGray), lineWidth: 1.2)
-                                        .padding(0.4)
+                                .adaptiveGlassEffect(
+                                    in: RoundedCorners(topLeft: 0, topRight: 0, bottomLeft: 20, bottomRight: 20),
+                                    strokeColor: colorScheme == .dark ? Color(UIColor.darkGray) : Color(UIColor.lightGray),
+                                    strokeWidth: 1.2
                                 )
                                 .contextMenu {
                                     Button("Copy Address") {
@@ -388,30 +377,14 @@ struct QuestView: View {
             }
 
         }
-        .overlay(
-            Color.clear
-                .frame(height: UIApplication.shared.windows.first?.safeAreaInsets.top ?? 44)
-                .confettiCannon(
-                    trigger: $confettiCounter,
-                    num: 50,
-                    colors: [Color.cougarBlue],
-                    rainHeight: UIScreen.main.bounds.height,
-                    openingAngle: Angle(degrees: 180),
-                    closingAngle: Angle(degrees: 360)
-                ),
-            alignment: .top
-        )
         .onAppear {
-            isQuestOpen = true
-        }
-        .onDisappear {
-            isQuestOpen = false
+            print("📺 QuestView.onAppear setting isHomeQuestOpen=true")
+            tabStore.isHomeQuestOpen = true
         }
     }
 }
 
 struct QuestView_Previews: PreviewProvider {
-    @State static var isQuestOpen = false
     static var previews: some View {
         QuestView(
             quest: Quest(
@@ -424,8 +397,7 @@ struct QuestView_Previews: PreviewProvider {
                 photoURL: "",
                 createdAt: Date(),
                 completedAt: nil
-            ),
-            isQuestOpen: $isQuestOpen
+            )
         )
     }
 }

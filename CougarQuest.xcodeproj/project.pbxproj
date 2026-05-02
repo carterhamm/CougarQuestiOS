@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7E9006D02DD60D2600489E01 /* ConfettiSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 7E9006CF2DD60D2600489E01 /* ConfettiSwiftUI */; };
 		7E90739A2DBD3732005BC8AF /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 7E9073992DBD3732005BC8AF /* FirebaseAnalytics */; };
 		7E90739C2DBD3732005BC8AF /* FirebaseAnalyticsOnDeviceConversion in Frameworks */ = {isa = PBXBuildFile; productRef = 7E90739B2DBD3732005BC8AF /* FirebaseAnalyticsOnDeviceConversion */; };
 		7E90739E2DBD3732005BC8AF /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 7E90739D2DBD3732005BC8AF /* FirebaseAnalyticsWithoutAdIdSupport */; };
@@ -97,7 +96,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7E9006D02DD60D2600489E01 /* ConfettiSwiftUI in Frameworks */,
 				7E9073B22DBD3732005BC8AF /* FirebaseFirestoreCombine-Community in Frameworks */,
 				7E9073C82DBD3732005BC8AF /* FirebaseVertexAI in Frameworks */,
 				7E9073B42DBD3732005BC8AF /* FirebaseFunctions in Frameworks */,
@@ -214,7 +212,6 @@
 				7EE8E9392DBEB5CC00005553 /* GoogleSignInSwift */,
 				7EBBFB9B2DC3958D00766E0A /* Kingfisher */,
 				7EBBFBA42DCFD19800766E0A /* AnyCodable */,
-				7E9006CF2DD60D2600489E01 /* ConfettiSwiftUI */,
 			);
 			productName = CougarQuest;
 			productReference = 7E5133412DB929FE00E469BF /* CougarQuest.app */;
@@ -303,7 +300,6 @@
 				7EE8E9362DBEB5CC00005553 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				7EBBFB9A2DC3958D00766E0A /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				7EBBFBA32DCFD19800766E0A /* XCRemoteSwiftPackageReference "AnyCodable" */,
-				7E9006CE2DD60D2600489E01 /* XCRemoteSwiftPackageReference "ConfettiSwiftUI" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7E5133422DB929FE00E469BF /* Products */;
@@ -698,14 +694,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		7E9006CE2DD60D2600489E01 /* XCRemoteSwiftPackageReference "ConfettiSwiftUI" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/simibac/ConfettiSwiftUI";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.3;
-			};
-		};
 		7E9073982DBD3732005BC8AF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -741,11 +729,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		7E9006CF2DD60D2600489E01 /* ConfettiSwiftUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 7E9006CE2DD60D2600489E01 /* XCRemoteSwiftPackageReference "ConfettiSwiftUI" */;
-			productName = ConfettiSwiftUI;
-		};
 		7E9073992DBD3732005BC8AF /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 7E9073982DBD3732005BC8AF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

@@ -82,12 +82,12 @@ private struct PodiumSection: View {
                         .font(.system(size: 28))
 
                     if let user = user {
-                        Text(podiumName(user.displayName))
+                        Text(user.displayName)
                             .font(.caption)
                             .fontWeight(.bold)
                             .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.75)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.55)
                             .foregroundColor(isCurrent ? .cougarBlue : .primary)
 
                         Text("\(user.points) pts")
@@ -97,9 +97,12 @@ private struct PodiumSection: View {
                     }
 
                     ZStack(alignment: .bottom) {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(podiumColor(slot.rank))
+                        Color.clear
                             .frame(height: slot.height)
+                            .adaptiveGlassEffectTinted(
+                                color: podiumColor(slot.rank),
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            )
 
                         Text("\(slot.rank)")
                             .font(.headline)
@@ -190,13 +193,10 @@ private struct MyRankCard: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.cougarBlue.opacity(0.25), lineWidth: 1)
-                )
+        .adaptiveGlassEffect(
+            in: RoundedRectangle(cornerRadius: 20),
+            strokeColor: Color.cougarBlue.opacity(0.25),
+            strokeWidth: 1
         )
         .padding(.horizontal)
     }
@@ -210,54 +210,96 @@ private struct RankingsList: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 10) {
             ForEach(Array(users.enumerated()), id: \.element.id) { index, user in
-                let isCurrent = user.id == currentUID
-
-                HStack(spacing: 12) {
-                    Text("\(index + 1)")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
-                        .foregroundColor(isCurrent ? .white : .secondary)
-                        .frame(width: 26, alignment: .center)
-
-                    Text(user.displayName)
-                        .font(.subheadline)
-                        .fontWeight(isCurrent ? .bold : .regular)
-                        .foregroundColor(isCurrent ? .white : .primary)
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    HStack(spacing: 3) {
-                        Text("\(user.points)")
-                            .font(.subheadline)
-                            .fontWeight(.bold)
-                            .foregroundColor(isCurrent ? .white : .cougarBlue)
-                        Text("pts")
-                            .font(.caption)
-                            .foregroundColor(isCurrent ? .white.opacity(0.75) : .secondary)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 13)
-                .background(isCurrent ? Color.cougarBlue : Color.clear)
-
-                if index < users.count - 1 {
-                    Divider()
-                        .padding(.leading, 54)
-                }
+                RankingRow(
+                    rank: index + 1,
+                    user: user,
+                    isCurrent: user.id == currentUID
+                )
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.gray.opacity(colorScheme == .dark ? 0.3 : 0.15), lineWidth: 1)
-                )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal)
+    }
+}
+
+private struct RankingRow: View {
+    let rank: Int
+    let user: LeaderboardViewModel.LeaderboardUser
+    let isCurrent: Bool
+    @Environment(\.colorScheme) var colorScheme
+
+    private var rankBadgeColor: Color {
+        switch rank {
+        case 1: return Color(red: 0.85, green: 0.65, blue: 0.13)
+        case 2: return Color(red: 0.72, green: 0.72, blue: 0.76)
+        case 3: return Color(red: 0.78, green: 0.50, blue: 0.24)
+        default: return Color.cougarBlue
+        }
+    }
+
+    private var rankTextColor: Color {
+        .white
+    }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Color.clear
+                    .frame(width: 36, height: 36)
+                    .adaptiveGlassEffectTinted(color: rankBadgeColor, in: Circle())
+                Text("\(rank)")
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundColor(rankTextColor)
+            }
+
+            Text(user.displayName)
+                .font(.subheadline)
+                .fontWeight(isCurrent ? .bold : .semibold)
+                .foregroundColor(isCurrent ? .white : .primary)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 4) {
+                Text("\(user.points)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(isCurrent ? .white : .cougarBlue)
+                Text("pts")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(isCurrent ? .white.opacity(0.85) : .secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(isCurrent ? Color.white.opacity(0.18) : Color.cougarBlue.opacity(0.10))
+            )
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background {
+            if isCurrent {
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.cougarBlue)
+            } else {
+                Color.clear
+                    .adaptiveGlassEffect(
+                        in: RoundedRectangle(cornerRadius: 18),
+                        strokeColor: Color.gray.opacity(colorScheme == .dark ? 0.25 : 0.12),
+                        strokeWidth: 1
+                    )
+            }
+        }
+        .overlay(
+            Group {
+                if isCurrent {
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(Color.cougarBlue.opacity(0.35), lineWidth: 1)
+                }
+            }
+        )
     }
 }
 
