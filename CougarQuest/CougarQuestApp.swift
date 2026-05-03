@@ -196,11 +196,13 @@ struct CougarQuestApp: App {
                     sharedModelContainer = try! ModelContainer(for: schema, configurations: [config])
                 }
             }
-            // Universal Link handling: cougarquest.com/q/<id>
+            // Universal Link handling: cougarquest.com/quest/<id>
             .onOpenURL { url in
+                print("🔗 onOpenURL: \(url.absoluteString)")
                 DeepLinkState.shared.handle(url)
             }
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                print("🔗 onContinueUserActivity webpageURL: \(activity.webpageURL?.absoluteString ?? "nil")")
                 if let url = activity.webpageURL {
                     DeepLinkState.shared.handle(url)
                 }

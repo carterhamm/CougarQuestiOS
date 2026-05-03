@@ -22,7 +22,9 @@ final class DeepLinkState: ObservableObject {
     private init() {}
 
     func handle(_ url: URL) {
-        if let id = CougarQuestLink.questId(from: url) {
+        let id = CougarQuestLink.questId(from: url)
+        print("🔗 DeepLinkState.handle url=\(url.absoluteString) parsed id=\(id ?? "nil")")
+        if let id = id {
             pendingQuestId = id
         }
     }
@@ -101,17 +103,28 @@ struct FloatingTabBar: View {
         }
     }
 
+    private var isExpanded: Bool {
+        selectedTab == .quests && selectedQuest != nil
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
+            // Background pill — subtle CougarBlue tint when expanded so the
+            // description text below has enough contrast to read against
+            // arbitrary map content peeking through the glass.
             Color.clear
                 .frame(height: capsuleHeight)
-                .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 50))
+                .adaptiveGlassEffectTinted(
+                    color: isExpanded ? Color.cougarBlue.opacity(0.18) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 50)
+                )
                 .allowsHitTesting(false)
 
             if selectedTab == .quests, let quest = selectedQuest {
                 expandedQuestContent(quest: quest)
                     .frame(height: capsuleHeight - 80, alignment: .top)
                     .offset(y: -70 + dragOffset)
+                    .zIndex(1)
             }
 
             ZStack {
@@ -340,16 +353,25 @@ struct FloatingTabBar: View {
 
     @ViewBuilder
     private func expandedQuestContent(quest: Quest) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Drag handle — capsule sits in a thin row that extends edge-to-edge
-            // for tap detection. Total height ~10pt so we don't push the View
-            // Quest / Navigate buttons down into the underlying tab options.
-            Capsule()
-                .fill(Color.black)
-                .frame(width: 50, height: 4)
-                .frame(maxWidth: .infinity, minHeight: 10, maxHeight: 10)
-                .padding(.horizontal, -12)
+        let isCompleted = morphState.completedQuestTitles.contains(quest.title)
+
+        VStack(spacing: 10) {
+            // Photo banner — full-bleed at the top, matching the bar's 50pt
+            // top corners. Drag handle sits as a white capsule overlay so the
+            // photo visually goes all the way to the top edge.
+            photoBanner(quest: quest, isCompleted: isCompleted)
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 50,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 50,
+                        style: .continuous
+                    )
+                )
                 .contentShape(Rectangle())
+                // Single drag gesture: drag down to dismiss, tap-near-top
+                // also dismisses (the handle indicator is at the top edge).
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
@@ -362,7 +384,8 @@ struct FloatingTabBar: View {
                             let dy = value.translation.height
                             if dy > 50 {
                                 dismissExpanded()
-                            } else if dx < 5 && abs(dy) < 5 {
+                            } else if dx < 5 && abs(dy) < 5 && value.startLocation.y < 30 {
+                                // Tapped right on the drag handle area
                                 dismissExpanded()
                             } else {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -372,47 +395,22 @@ struct FloatingTabBar: View {
                         }
                 )
 
-            // Full-width photo banner with title + address overlay
-            ZStack(alignment: .bottomLeading) {
-                if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
-                    KFImage(url)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 96)
-                        .clipped()
-                } else {
-                    Color.gray.opacity(0.3)
-                        .frame(height: 96)
-                }
-                LinearGradient(
-                    colors: [Color.black.opacity(0.65), Color.clear],
-                    startPoint: .bottom,
-                    endPoint: .center
-                )
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(quest.title)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    Text(quest.address)
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.85))
-                        .lineLimit(1)
-                }
-                .padding(12)
-            }
-            .frame(height: 96)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-
-            // Description
+            // Description — tinted glass card so the text reads cleanly
+            // regardless of whatever map / hero photo is showing through
+            // the bar's outer glass.
             Text(quest.description)
                 .font(.subheadline)
-                .foregroundColor(.primary.opacity(0.85))
+                .foregroundColor(.primary)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .adaptiveGlassEffectTinted(
+                    color: Color.white.opacity(0.55),
+                    in: RoundedRectangle(cornerRadius: 14)
+                )
+                .padding(.horizontal, 16)
 
             Spacer(minLength: 0)
 
@@ -462,9 +460,87 @@ struct FloatingTabBar: View {
                     }
                 }
             }
+            .padding(.horizontal, 16)
         }
-        .padding(.horizontal, 16)
         .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private func photoBanner(quest: Quest, isCompleted: Bool) -> some View {
+        ZStack(alignment: .bottom) {
+            // Photo / fallback gray
+            if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
+                KFImage(url)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 130)
+                    .clipped()
+            } else {
+                Color.gray.opacity(0.3)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 130)
+            }
+
+            // Gradient for legibility under the title/address
+            LinearGradient(
+                colors: [Color.black.opacity(0.7), Color.clear],
+                startPoint: .bottom,
+                endPoint: .center
+            )
+            .frame(height: 130)
+            .allowsHitTesting(false)
+
+            // Drag-handle indicator at the very top
+            VStack {
+                Capsule()
+                    .fill(Color.white.opacity(0.95))
+                    .frame(width: 44, height: 5)
+                    .padding(.top, 10)
+                Spacer()
+            }
+            .frame(height: 130)
+            .allowsHitTesting(false)
+
+            // Title + address (left) and completion badge (right)
+            HStack(alignment: .bottom, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(quest.title)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                    Text(quest.address)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.85))
+                        .lineLimit(1)
+                }
+                Spacer()
+                if isCompleted {
+                    completedBadge
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+            .allowsHitTesting(false)
+        }
+        .frame(height: 130)
+    }
+
+    @ViewBuilder
+    private var completedBadge: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "checkmark.seal.fill")
+            Text("Completed")
+        }
+        .font(.caption2)
+        .fontWeight(.bold)
+        .foregroundColor(.white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            Capsule().fill(Color.green.opacity(0.9))
+        )
     }
 }
 
@@ -480,12 +556,43 @@ struct ContentView: View {
     @State private var uploadError: String? = nil
 
     private func handleDeepLinkQuest(id: String) {
+        print("🔗 handleDeepLinkQuest fetching id=\(id)")
         // Fetch the quest by id and open it on the QuestsView path so the
         // sheet UI we already have for this kicks in.
-        Firestore.firestore().collection("quests").document(id).getDocument { snapshot, _ in
-            guard let snapshot = snapshot, snapshot.exists,
-                  let quest = try? snapshot.data(as: Quest.self) else { return }
+        Firestore.firestore().collection("quests").document(id).getDocument { snapshot, error in
+            if let error = error {
+                print("🔗 quest fetch error:", error.localizedDescription)
+                return
+            }
+            guard let snapshot = snapshot, snapshot.exists else {
+                print("🔗 quest doc does not exist for id=\(id)")
+                return
+            }
+            // Try Codable decode first (the @DocumentID path); fall back to
+            // manual field extraction if that fails so a single missing
+            // field doesn't kill the deep link.
+            let quest: Quest
+            if let decoded = try? snapshot.data(as: Quest.self) {
+                quest = decoded
+            } else if let data = snapshot.data() {
+                print("🔗 Codable decode failed; falling back to manual field read")
+                quest = Quest(
+                    id: snapshot.documentID,
+                    title: data["title"] as? String ?? "",
+                    address: data["address"] as? String ?? "",
+                    description: data["description"] as? String ?? "",
+                    mapsLink: data["mapsLink"] as? String ?? "",
+                    plusCode: data["plusCode"] as? String ?? "",
+                    photoURL: data["photoURL"] as? String ?? "",
+                    createdAt: (data["createdAt"] as? Timestamp)?.dateValue(),
+                    completedAt: (data["completedAt"] as? Timestamp)?.dateValue()
+                )
+            } else {
+                print("🔗 quest data() returned nil")
+                return
+            }
             DispatchQueue.main.async {
+                print("🔗 routing to quest sheet for \(quest.title)")
                 selectedTab = .quests
                 morphState.quest = quest
                 sheetQuest = quest
