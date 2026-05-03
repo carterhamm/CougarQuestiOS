@@ -35,6 +35,7 @@
 		7EBBFBA52DCFD19800766E0A /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = 7EBBFBA42DCFD19800766E0A /* AnyCodable */; };
 		7EE8E9382DBEB5CC00005553 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 7EE8E9372DBEB5CC00005553 /* GoogleSignIn */; };
 		7EE8E93A2DBEB5CC00005553 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7EE8E9392DBEB5CC00005553 /* GoogleSignInSwift */; };
+		7EEBA81F2FA6EADC0060FDD5 /* Clip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = 7EEBA7FD2FA6EAD90060FDD5 /* Clip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,12 +53,50 @@
 			remoteGlobalIDString = 7E5133402DB929FE00E469BF;
 			remoteInfo = CougarQuest;
 		};
+		7EEBA80C2FA6EADC0060FDD5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7E5133392DB929FE00E469BF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7EEBA7FC2FA6EAD90060FDD5;
+			remoteInfo = Clip;
+		};
+		7EEBA8162FA6EADC0060FDD5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7E5133392DB929FE00E469BF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7EEBA7FC2FA6EAD90060FDD5;
+			remoteInfo = Clip;
+		};
+		7EEBA81D2FA6EADC0060FDD5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7E5133392DB929FE00E469BF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7EEBA7FC2FA6EAD90060FDD5;
+			remoteInfo = Clip;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7EEBA8242FA6EADC0060FDD5 /* Embed App Clips */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/AppClips";
+			dstSubfolderSpec = 16;
+			files = (
+				7EEBA81F2FA6EADC0060FDD5 /* Clip.app in Embed App Clips */,
+			);
+			name = "Embed App Clips";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		7E5133412DB929FE00E469BF /* CougarQuest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CougarQuest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E5133552DB92A0100E469BF /* CougarQuestTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CougarQuestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E51335F2DB92A0100E469BF /* CougarQuestUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CougarQuestUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7EEBA7FD2FA6EAD90060FDD5 /* Clip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Clip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7EEBA80B2FA6EADC0060FDD5 /* ClipTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClipTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7EEBA8152FA6EADC0060FDD5 /* ClipUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClipUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -67,6 +106,13 @@
 				Info.plist,
 			);
 			target = 7E5133402DB929FE00E469BF /* CougarQuest */;
+		};
+		7EEBA8232FA6EADC0060FDD5 /* Exceptions for "Clip" folder in "Clip" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7EEBA7FC2FA6EAD90060FDD5 /* Clip */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -87,6 +133,24 @@
 		7E5133622DB92A0100E469BF /* CougarQuestUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CougarQuestUITests;
+			sourceTree = "<group>";
+		};
+		7EEBA7FE2FA6EAD90060FDD5 /* Clip */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7EEBA8232FA6EADC0060FDD5 /* Exceptions for "Clip" folder in "Clip" target */,
+			);
+			path = Clip;
+			sourceTree = "<group>";
+		};
+		7EEBA80E2FA6EADC0060FDD5 /* ClipTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ClipTests;
+			sourceTree = "<group>";
+		};
+		7EEBA8182FA6EADC0060FDD5 /* ClipUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ClipUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -141,6 +205,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7EEBA7FA2FA6EAD90060FDD5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EEBA8082FA6EADC0060FDD5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EEBA8122FA6EADC0060FDD5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -150,6 +235,9 @@
 				7E5133432DB929FE00E469BF /* CougarQuest */,
 				7E5133582DB92A0100E469BF /* CougarQuestTests */,
 				7E5133622DB92A0100E469BF /* CougarQuestUITests */,
+				7EEBA7FE2FA6EAD90060FDD5 /* Clip */,
+				7EEBA80E2FA6EADC0060FDD5 /* ClipTests */,
+				7EEBA8182FA6EADC0060FDD5 /* ClipUITests */,
 				7E5133422DB929FE00E469BF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -160,6 +248,9 @@
 				7E5133412DB929FE00E469BF /* CougarQuest.app */,
 				7E5133552DB92A0100E469BF /* CougarQuestTests.xctest */,
 				7E51335F2DB92A0100E469BF /* CougarQuestUITests.xctest */,
+				7EEBA7FD2FA6EAD90060FDD5 /* Clip.app */,
+				7EEBA80B2FA6EADC0060FDD5 /* ClipTests.xctest */,
+				7EEBA8152FA6EADC0060FDD5 /* ClipUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -174,10 +265,12 @@
 				7E51333D2DB929FE00E469BF /* Sources */,
 				7E51333E2DB929FE00E469BF /* Frameworks */,
 				7E51333F2DB929FE00E469BF /* Resources */,
+				7EEBA8242FA6EADC0060FDD5 /* Embed App Clips */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7EEBA81E2FA6EADC0060FDD5 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7E5133432DB929FE00E469BF /* CougarQuest */,
@@ -263,6 +356,74 @@
 			productReference = 7E51335F2DB92A0100E469BF /* CougarQuestUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		7EEBA7FC2FA6EAD90060FDD5 /* Clip */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7EEBA8202FA6EADC0060FDD5 /* Build configuration list for PBXNativeTarget "Clip" */;
+			buildPhases = (
+				7EEBA7F92FA6EAD90060FDD5 /* Sources */,
+				7EEBA7FA2FA6EAD90060FDD5 /* Frameworks */,
+				7EEBA7FB2FA6EAD90060FDD5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7EEBA7FE2FA6EAD90060FDD5 /* Clip */,
+			);
+			name = Clip;
+			packageProductDependencies = (
+			);
+			productName = Clip;
+			productReference = 7EEBA7FD2FA6EAD90060FDD5 /* Clip.app */;
+			productType = "com.apple.product-type.application.on-demand-install-capable";
+		};
+		7EEBA80A2FA6EADC0060FDD5 /* ClipTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7EEBA8252FA6EADC0060FDD5 /* Build configuration list for PBXNativeTarget "ClipTests" */;
+			buildPhases = (
+				7EEBA8072FA6EADC0060FDD5 /* Sources */,
+				7EEBA8082FA6EADC0060FDD5 /* Frameworks */,
+				7EEBA8092FA6EADC0060FDD5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7EEBA80D2FA6EADC0060FDD5 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7EEBA80E2FA6EADC0060FDD5 /* ClipTests */,
+			);
+			name = ClipTests;
+			packageProductDependencies = (
+			);
+			productName = ClipTests;
+			productReference = 7EEBA80B2FA6EADC0060FDD5 /* ClipTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7EEBA8142FA6EADC0060FDD5 /* ClipUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7EEBA8282FA6EADC0060FDD5 /* Build configuration list for PBXNativeTarget "ClipUITests" */;
+			buildPhases = (
+				7EEBA8112FA6EADC0060FDD5 /* Sources */,
+				7EEBA8122FA6EADC0060FDD5 /* Frameworks */,
+				7EEBA8132FA6EADC0060FDD5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7EEBA8172FA6EADC0060FDD5 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7EEBA8182FA6EADC0060FDD5 /* ClipUITests */,
+			);
+			name = ClipUITests;
+			packageProductDependencies = (
+			);
+			productName = ClipUITests;
+			productReference = 7EEBA8152FA6EADC0060FDD5 /* ClipUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -270,7 +431,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					7E5133402DB929FE00E469BF = {
@@ -283,6 +444,17 @@
 					7E51335E2DB92A0100E469BF = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 7E5133402DB929FE00E469BF;
+					};
+					7EEBA7FC2FA6EAD90060FDD5 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+					7EEBA80A2FA6EADC0060FDD5 = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 7EEBA7FC2FA6EAD90060FDD5;
+					};
+					7EEBA8142FA6EADC0060FDD5 = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 7EEBA7FC2FA6EAD90060FDD5;
 					};
 				};
 			};
@@ -309,6 +481,9 @@
 				7E5133402DB929FE00E469BF /* CougarQuest */,
 				7E5133542DB92A0100E469BF /* CougarQuestTests */,
 				7E51335E2DB92A0100E469BF /* CougarQuestUITests */,
+				7EEBA7FC2FA6EAD90060FDD5 /* Clip */,
+				7EEBA80A2FA6EADC0060FDD5 /* ClipTests */,
+				7EEBA8142FA6EADC0060FDD5 /* ClipUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -329,6 +504,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		7E51335D2DB92A0100E469BF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EEBA7FB2FA6EAD90060FDD5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EEBA8092FA6EADC0060FDD5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EEBA8132FA6EADC0060FDD5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -359,6 +555,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7EEBA7F92FA6EAD90060FDD5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EEBA8072FA6EADC0060FDD5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EEBA8112FA6EADC0060FDD5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -371,6 +588,21 @@
 			isa = PBXTargetDependency;
 			target = 7E5133402DB929FE00E469BF /* CougarQuest */;
 			targetProxy = 7E5133602DB92A0100E469BF /* PBXContainerItemProxy */;
+		};
+		7EEBA80D2FA6EADC0060FDD5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7EEBA7FC2FA6EAD90060FDD5 /* Clip */;
+			targetProxy = 7EEBA80C2FA6EADC0060FDD5 /* PBXContainerItemProxy */;
+		};
+		7EEBA8172FA6EADC0060FDD5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7EEBA7FC2FA6EAD90060FDD5 /* Clip */;
+			targetProxy = 7EEBA8162FA6EADC0060FDD5 /* PBXContainerItemProxy */;
+		};
+		7EEBA81E2FA6EADC0060FDD5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7EEBA7FC2FA6EAD90060FDD5 /* Clip */;
+			targetProxy = 7EEBA81D2FA6EADC0060FDD5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -585,7 +817,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = M89Y628V4Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
@@ -594,7 +826,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CougarQuest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CougarQuest";
 			};
 			name = Debug;
@@ -604,7 +836,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = M89Y628V4Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
@@ -613,7 +845,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CougarQuest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CougarQuest";
 			};
 			name = Release;
@@ -622,7 +854,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = M89Y628V4Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -630,7 +862,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = CougarQuest;
 			};
 			name = Debug;
@@ -639,7 +871,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = M89Y628V4Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -647,8 +879,166 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = CougarQuest;
+			};
+			name = Release;
+		};
+		7EEBA8212FA6EADC0060FDD5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Clip/Clip.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = R293ULNJP4;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Clip/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CougarQuest;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Tony.Stark.CougarQuest.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		7EEBA8222FA6EADC0060FDD5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Clip/Clip.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = R293ULNJP4;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Clip/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CougarQuest;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Tony.Stark.CougarQuest.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		7EEBA8262FA6EADC0060FDD5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = R293ULNJP4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Tony.Stark.CougarQuest.ClipTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Clip.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Clip";
+			};
+			name = Debug;
+		};
+		7EEBA8272FA6EADC0060FDD5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = R293ULNJP4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Tony.Stark.CougarQuest.ClipTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Clip.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Clip";
+			};
+			name = Release;
+		};
+		7EEBA8292FA6EADC0060FDD5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = R293ULNJP4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Tony.Stark.CougarQuest.ClipUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Clip;
+			};
+			name = Debug;
+		};
+		7EEBA82A2FA6EADC0060FDD5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = R293ULNJP4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Tony.Stark.CougarQuest.ClipUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Clip;
 			};
 			name = Release;
 		};
@@ -687,6 +1077,33 @@
 			buildConfigurations = (
 				7E5133712DB92A0100E469BF /* Debug */,
 				7E5133722DB92A0100E469BF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7EEBA8202FA6EADC0060FDD5 /* Build configuration list for PBXNativeTarget "Clip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7EEBA8212FA6EADC0060FDD5 /* Debug */,
+				7EEBA8222FA6EADC0060FDD5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7EEBA8252FA6EADC0060FDD5 /* Build configuration list for PBXNativeTarget "ClipTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7EEBA8262FA6EADC0060FDD5 /* Debug */,
+				7EEBA8272FA6EADC0060FDD5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7EEBA8282FA6EADC0060FDD5 /* Build configuration list for PBXNativeTarget "ClipUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7EEBA8292FA6EADC0060FDD5 /* Debug */,
+				7EEBA82A2FA6EADC0060FDD5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
