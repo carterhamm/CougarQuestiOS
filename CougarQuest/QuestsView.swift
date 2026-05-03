@@ -10,9 +10,10 @@ import MapKit
 import Kingfisher
 
 struct QuestsView: View {
-    @ObservedObject var tabStore = TabPresentationStore.shared
     @StateObject private var locationManager = LocationManager()
     @State private var quests: [Quest] = []
+    @Binding var selectedQuest: Quest?
+    @ObservedObject private var morphState = MorphState.shared
     // Default to BYU campus if location not yet available
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 40.2529, longitude: -111.6498),
@@ -33,17 +34,18 @@ struct QuestsView: View {
                 }
             ) { item in
                 MapAnnotation(coordinate: item.coordinate) {
+                    let isCompleted = morphState.completedQuestTitles.contains(item.quest.title)
                     Button {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                            tabStore.selectedQuest = item.quest
+                        selectedQuest = item.quest
+                        withAnimation(.easeInOut(duration: 0.6)) {
                             region.center = item.coordinate
                             region.span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
                         }
                     } label: {
                         ZStack {
-                            // White border ring
+                            // Border ring: CougarBlue for incomplete (action), white for completed (subtle).
                             Circle()
-                                .fill(Color.white)
+                                .fill(isCompleted ? Color.white : Color.cougarBlue)
                                 .frame(width: 50, height: 50)
                             // Quest image
                             if let url = URL(string: item.quest.photoURL) {
@@ -93,9 +95,9 @@ struct QuestsView: View {
                     }
                 }
             }
-            .onChange(of: tabStore.selectedQuest?.id) { _ in
+            .onChange(of: selectedQuest?.id) { _ in
                 withAnimation(.easeInOut(duration: 0.6)) {
-                    if let quest = tabStore.selectedQuest, let coord = parseCoordinate(from: quest.mapsLink) {
+                    if let quest = selectedQuest, let coord = parseCoordinate(from: quest.mapsLink) {
                         region.center = coord
                         region.span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
                     } else {
@@ -144,7 +146,7 @@ private struct AnnotatedQuest: Identifiable {
 
 struct QuestsView_Previews: PreviewProvider {
     static var previews: some View {
-        QuestsView()
+        QuestsView(selectedQuest: .constant(nil))
     }
 }
 

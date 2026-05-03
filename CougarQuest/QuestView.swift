@@ -71,7 +71,7 @@ struct RoundedCorners: Shape {
 }
 
 struct QuestView: View {
-    @ObservedObject var tabStore = TabPresentationStore.shared
+    @Binding var isQuestOpen: Bool
     @State private var region: MKCoordinateRegion
     @State private var isCompleted: Bool = false
     @Environment(\.colorScheme) var colorScheme
@@ -83,8 +83,9 @@ struct QuestView: View {
 
     var quest: Quest
 
-    init(quest: Quest) {
+    init(quest: Quest, isQuestOpen: Binding<Bool>) {
         self.quest = quest
+        self._isQuestOpen = isQuestOpen
         // Default to BYU Creamery location
         let defaultCenter = CLLocationCoordinate2D(latitude: 40.250106, longitude: -111.643463)
         // Attempt to extract latitude and longitude from the "ll" or "coordinate" query parameter
@@ -135,13 +136,12 @@ struct QuestView: View {
                         }
                         Firestore.firestore().collection("users").document(uid)
                             .updateData(["points": FieldValue.increment(reward)]) { _ in }
-                        DispatchQueue.main.async {
-                            withAnimation(.easeInOut) {
-                                isCompleted = true
-                                let generator = UIImpactFeedbackGenerator(style: .heavy)
-                                generator.impactOccurred()
-                                tabStore.isHomeQuestOpen = false
-                            }
+                        withAnimation(.easeInOut) {
+                            isCompleted = true
+                            let generator = UIImpactFeedbackGenerator(style: .heavy)
+                            generator.impactOccurred()
+                            // Dismiss the quest view
+                            isQuestOpen = false
                         }
                     }
                 }
@@ -378,13 +378,16 @@ struct QuestView: View {
 
         }
         .onAppear {
-            print("📺 QuestView.onAppear setting isHomeQuestOpen=true")
-            tabStore.isHomeQuestOpen = true
+            isQuestOpen = true
+        }
+        .onDisappear {
+            isQuestOpen = false
         }
     }
 }
 
 struct QuestView_Previews: PreviewProvider {
+    @State static var isQuestOpen = false
     static var previews: some View {
         QuestView(
             quest: Quest(
@@ -397,7 +400,8 @@ struct QuestView_Previews: PreviewProvider {
                 photoURL: "",
                 createdAt: Date(),
                 completedAt: nil
-            )
+            ),
+            isQuestOpen: $isQuestOpen
         )
     }
 }

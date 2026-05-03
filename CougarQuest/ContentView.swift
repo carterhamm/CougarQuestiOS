@@ -7,17 +7,29 @@
 
 import SwiftUI
 import UIKit
+import AVFoundation
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
 import Kingfisher
 
-final class TabPresentationStore: ObservableObject {
-    static let shared = TabPresentationStore()
-    @Published var selectedTab: TabItem = .home
-    @Published var selectedQuest: Quest? = nil
-    @Published var isHomeQuestOpen: Bool = false
+final class MorphState: ObservableObject {
+    static let shared = MorphState()
+    @Published var quest: Quest? = nil
+    @Published var isUploading: Bool = false
+    @Published var isComplete: Bool = false
+    /// Titles of quests the current user has already completed.
+    /// HomeView's snapshot listener populates this; the morph bar reads it
+    /// to render the "Quest Complete!" state when the user re-opens a
+    /// quest they previously finished.
+    @Published var completedQuestTitles: Set<String> = []
     private init() {}
+
+    /// True when the currently-open quest is one the user already finished.
+    var isQuestAlreadyCompleted: Bool {
+        guard let q = quest else { return false }
+        return completedQuestTitles.contains(q.title)
+    }
 }
 
 enum TabItem: CaseIterable, Identifiable, Hashable {
@@ -42,15 +54,25 @@ enum TabItem: CaseIterable, Identifiable, Hashable {
 }
 
 struct FloatingTabBar: View {
-    @ObservedObject var tabStore = TabPresentationStore.shared
+    @Binding var selectedTab: TabItem
+    @Binding var selectedQuest: Quest?
+    let onImagePicked: (UIImage) -> Void
+    let onPresentQuestSheet: (Quest) -> Void
+    @ObservedObject var morphState = MorphState.shared
     @Namespace private var animation
     @State private var dragOffset: CGFloat = 0
-    @State private var sheetQuest: Quest? = nil
-    @State private var pillDragX: CGFloat? = nil
-    @State private var isPillDragging: Bool = false
+    @State private var showImagePicker = false
+    @State private var imagePickerSource: UIImagePickerController.SourceType = .photoLibrary
+    @State private var pickedImage: UIImage?
+
+    private var isMorphActive: Bool {
+        // Main floating bar only morphs on the HomeView path.
+        // QuestsView path uses a sheet with its own MorphActionBar.
+        selectedTab == .home && (morphState.quest != nil || morphState.isComplete)
+    }
 
     private var capsuleHeight: CGFloat {
-        (tabStore.selectedTab == .quests && tabStore.selectedQuest != nil)
+        (selectedTab == .quests && selectedQuest != nil)
             ? UIScreen.main.bounds.height * 0.36
             : 68
     }
@@ -58,8 +80,8 @@ struct FloatingTabBar: View {
     private func dismissExpanded() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-            tabStore.selectedQuest = nil
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) {
+            selectedQuest = nil
             dragOffset = 0
         }
     }
@@ -71,102 +93,255 @@ struct FloatingTabBar: View {
                 .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 50))
                 .allowsHitTesting(false)
 
-            if tabStore.selectedTab == .quests, let quest = tabStore.selectedQuest {
+            if selectedTab == .quests, let quest = selectedQuest {
                 expandedQuestContent(quest: quest)
                     .frame(height: capsuleHeight - 80, alignment: .top)
                     .offset(y: -70 + dragOffset)
             }
 
-            GeometryReader { geo in
-                let tabs = TabItem.allCases
-                let cellWidth = (geo.size.width - 12) / CGFloat(tabs.count)
-                let restingX = 6 + cellWidth * CGFloat(tabs.firstIndex(of: tabStore.selectedTab) ?? 0)
-                let pillX: CGFloat = {
-                    if let x = pillDragX {
-                        return min(max(x - cellWidth / 2, 6), geo.size.width - 6 - cellWidth)
-                    }
-                    return restingX
-                }()
-
-                ZStack(alignment: .leading) {
-                    Color.clear
-                        .frame(width: cellWidth, height: 56)
-                        .adaptiveGlassEffectTinted(color: Color.cougarBlue.opacity(0.9), in: RoundedRectangle(cornerRadius: 50))
-                        .scaleEffect(isPillDragging ? 0.92 : 1)
-                        .shadow(color: Color.cougarBlue.opacity(isPillDragging ? 0.5 : 0.25), radius: isPillDragging ? 24 : 15, x: 0, y: 5)
-                        .offset(x: pillX)
-                        .animation(.interactiveSpring(response: 0.25, dampingFraction: 0.75), value: pillX)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: tabStore.selectedTab)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPillDragging)
-
-                    HStack(spacing: 0) {
-                        ForEach(TabItem.allCases) { tab in
-                            VStack(spacing: 2) {
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 16, weight: .semibold))
-                                Text(tab.title)
-                                    .font(.system(size: 10))
-                            }
-                            .foregroundColor(tabStore.selectedTab == tab ? .white : .primary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 68)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                let generator = UIImpactFeedbackGenerator(style: .heavy)
-                                generator.impactOccurred()
-                                if tab != .quests { tabStore.selectedQuest = nil }
-                                if tab != .home { tabStore.isHomeQuestOpen = false }
-                                withAnimation { tabStore.selectedTab = tab }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 6)
-                }
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 18)
-                        .onChanged { value in
-                            if !isPillDragging {
-                                isPillDragging = true
-                                let generator = UIImpactFeedbackGenerator(style: .medium)
-                                generator.impactOccurred()
-                            }
-                            pillDragX = value.location.x
-                            let index = Int(round((value.location.x - 6 - cellWidth / 2) / cellWidth))
-                            let clamped = max(0, min(tabs.count - 1, index))
-                            if tabs[clamped] != tabStore.selectedTab {
-                                tabStore.selectedTab = tabs[clamped]
-                                let generator = UIImpactFeedbackGenerator(style: .soft)
-                                generator.impactOccurred()
-                            }
-                        }
-                        .onEnded { _ in
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                isPillDragging = false
-                                pillDragX = nil
-                            }
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
-                        }
-                )
+            ZStack {
+                tabContent
+                    .opacity(isMorphActive ? 0 : 1)
+                    .scaleEffect(isMorphActive ? 0.92 : 1)
+                    .allowsHitTesting(!isMorphActive)
+                morphContent
+                    .opacity(isMorphActive ? 1 : 0)
+                    .scaleEffect(isMorphActive ? 1 : 0.92)
+                    .allowsHitTesting(isMorphActive)
             }
-            .frame(height: 68)
+            .animation(.spring(response: 0.5, dampingFraction: 0.85), value: isMorphActive)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 20)
+        .sheet(isPresented: $showImagePicker) {
+            ImagePicker(
+                source: imagePickerSource == .camera ? .camera : .library,
+                image: $pickedImage
+            )
+        }
+        .onChange(of: pickedImage) { image in
+            guard let img = image else { return }
+            onImagePicked(img)
+            pickedImage = nil
+        }
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        GeometryReader { geo in
+            let tabs = TabItem.allCases
+            let cellWidth = (geo.size.width - 12) / CGFloat(tabs.count)
+
+            ZStack(alignment: .leading) {
+                Color.clear
+                    .frame(width: cellWidth, height: 56)
+                    .adaptiveGlassEffectTinted(color: Color.cougarBlue.opacity(0.9), in: RoundedRectangle(cornerRadius: 50))
+                    .shadow(color: Color.cougarBlue.opacity(0.25), radius: 15, x: 0, y: 5)
+                    .offset(x: 6 + cellWidth * CGFloat(tabs.firstIndex(of: selectedTab) ?? 0))
+                    .animation(.spring(response: 0.35, dampingFraction: 0.7), value: selectedTab)
+
+                HStack(spacing: 0) {
+                    ForEach(TabItem.allCases) { tab in
+                        VStack(spacing: 2) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 16, weight: .semibold))
+                            Text(tab.title)
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(selectedTab == tab ? .white : .primary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 68)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            let generator = UIImpactFeedbackGenerator(style: .heavy)
+                            generator.impactOccurred()
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                selectedTab = tab
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 6)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 12)
+                    .onChanged { value in
+                        let raw = (value.location.x - 6) / cellWidth
+                        let idx = max(0, min(tabs.count - 1, Int(raw.rounded())))
+                        let target = tabs[idx]
+                        if selectedTab != target {
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                selectedTab = target
+                            }
+                        }
+                    }
+            )
+        }
+        .frame(height: 68)
+    }
+
+    @ViewBuilder
+    private var morphContent: some View {
+        if morphState.isComplete || morphState.isQuestAlreadyCompleted {
+            completeContent
+        } else if morphState.isUploading {
+            uploadingContent
+        } else {
+            captureContent
+        }
+    }
+
+    @ViewBuilder
+    private var captureContent: some View {
+        let buttonSize: CGFloat = 56
+        let spacing: CGFloat = 8
+        HStack(spacing: spacing) {
+            Button {
+                print("❌ X tapped")
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                generator.impactOccurred()
+                // Don't wrap in withAnimation — the NavigationStack pop has its own
+                // .zoom transition that conflicts with an outer animation context.
+                morphState.quest = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color(UIColor { trait in
+                        trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
+                    }))
+                    .frame(width: buttonSize, height: buttonSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                print("📷 Photo library tapped")
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                generator.impactOccurred()
+                imagePickerSource = .photoLibrary
+                showImagePicker = true
+                print("📷 showImagePicker now \(showImagePicker)")
+            } label: {
+                Image(systemName: "photo.on.rectangle")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color(UIColor { trait in
+                        trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
+                    }))
+                    .frame(width: buttonSize, height: buttonSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                print("📸 Capture tapped (button)")
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                generator.impactOccurred()
+                requestCameraThenPresent()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "camera.fill")
+                    Text("Capture")
+                }
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: buttonSize)
+                .adaptiveGlassEffectTinted(color: .cougarBlue, in: RoundedRectangle(cornerRadius: 28))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 6)
+        .frame(height: 68)
+    }
+
+    @ViewBuilder
+    private var uploadingContent: some View {
+        HStack(spacing: 10) {
+            ProgressView()
+                .progressViewStyle(.circular)
+                .tint(.white)
+            Text("Uploading…")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .padding(.horizontal, 6)
+        .adaptiveGlassEffectTinted(color: .cougarBlue, in: RoundedRectangle(cornerRadius: 28))
+        .padding(.horizontal, 6)
+    }
+
+    @ViewBuilder
+    private var completeContent: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.white)
+            Text("Quest Complete!")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(.white)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .padding(.horizontal, 6)
+        .adaptiveGlassEffectTinted(color: .cougarBlue, in: RoundedRectangle(cornerRadius: 28))
+        .padding(.horizontal, 6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            // Tap the complete pill to close the quest (no auto-dismiss for
+            // re-opened completed quests — let the user leave on their schedule).
+            let g = UIImpactFeedbackGenerator(style: .heavy)
+            g.impactOccurred()
+            morphState.quest = nil
+        }
+    }
+
+    private func requestCameraThenPresent() {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        print("📸 Capture tapped, camera auth status: \(status.rawValue)")
+        switch status {
+        case .authorized:
+            print("📸 authorized → opening camera")
+            imagePickerSource = .camera
+            showImagePicker = true
+        case .notDetermined:
+            print("📸 notDetermined → requesting access")
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                print("📸 access result: \(granted)")
+                DispatchQueue.main.async {
+                    imagePickerSource = granted && UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+                    showImagePicker = true
+                }
+            }
+        case .denied, .restricted:
+            print("📸 denied/restricted → photo library")
+            imagePickerSource = .photoLibrary
+            showImagePicker = true
+        @unknown default:
+            imagePickerSource = .photoLibrary
+            showImagePicker = true
+        }
     }
 
     @ViewBuilder
     private func expandedQuestContent(quest: Quest) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(spacing: 0) {
+            // Drag handle — single DragGesture handles both tap and drag.
+            // (Combining .onTapGesture with DragGesture(minimumDistance: 0)
+            // causes them to fight; SwiftUI hands the touch to one or the
+            // other and the user sees nothing happen.)
+            ZStack {
                 Capsule()
                     .fill(Color.black)
                     .frame(width: 50, height: 5)
             }
-            .padding(.vertical, 2)
             .frame(maxWidth: .infinity)
+            .frame(height: 32) // generous hit target
             .contentShape(Rectangle())
-            .onTapGesture { dismissExpanded() }
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
@@ -175,7 +350,12 @@ struct FloatingTabBar: View {
                         }
                     }
                     .onEnded { value in
-                        if value.translation.height > 50 {
+                        let dx = abs(value.translation.width)
+                        let dy = value.translation.height
+                        if dy > 50 {
+                            dismissExpanded()
+                        } else if dx < 5 && abs(dy) < 5 {
+                            // Effectively a tap
                             dismissExpanded()
                         } else {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -185,6 +365,7 @@ struct FloatingTabBar: View {
                     }
             )
 
+            // Full-width photo banner with title + address overlay
             ZStack(alignment: .bottomLeading) {
                 if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
                     KFImage(url)
@@ -218,17 +399,28 @@ struct FloatingTabBar: View {
             .frame(height: 96)
             .clipShape(RoundedRectangle(cornerRadius: 16))
 
+            // Description
             Text(quest.description)
                 .font(.subheadline)
                 .foregroundColor(.primary.opacity(0.85))
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
 
             Spacer(minLength: 0)
 
+            // Buttons row: View Quest + Navigate
             HStack(spacing: 8) {
                 Button {
-                    sheetQuest = quest
+                    print("🎯 View Quest tapped — quest.id=\(quest.id ?? "nil"), title=\(quest.title)")
+                    let generator = UIImpactFeedbackGenerator(style: .heavy)
+                    generator.impactOccurred()
+                    let q = quest
+                    // Keep selectedQuest set so the pin stays highlighted and the map
+                    // stays zoomed while the sheet is up. The expanded bar is hidden
+                    // by the sheet anyway.
+                    morphState.quest = q
+                    onPresentQuestSheet(q)
                 } label: {
                     Text("View Quest")
                         .font(.callout)
@@ -258,38 +450,50 @@ struct FloatingTabBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 4)
-        .sheet(item: $sheetQuest) { q in
-            NavigationStack {
-                QuestView(quest: q)
-            }
-        }
     }
 }
 
 struct ContentView: View {
     @EnvironmentObject var profileVM: ProfileViewModel
     @EnvironmentObject var authVM: AuthViewModel
-    @ObservedObject private var tabStore = TabPresentationStore.shared
-    @State private var selectedTabLocal: TabItem = .home
-    @State private var isHomeQuestOpenLocal: Bool = false
+    @ObservedObject private var morphState = MorphState.shared
+    @State private var selectedTab: TabItem = .home
     @State private var isKeyboardVisible: Bool = false
-    @State private var showActionButtons: Bool = false
-    @State private var showImagePicker = false
-    @State private var imagePickerSource: UIImagePickerController.SourceType = .photoLibrary
-    @State private var imageToUpload: UIImage?
+    @State private var selectedQuest: Quest? = nil
+    @State private var sheetQuest: Quest? = nil
+    @State private var uploadError: String? = nil
 
     private let islandAnimation = Animation.spring(response: 0.65, dampingFraction: 0.65, blendDuration: 0.85)
 
     private func uploadPhoto(_ image: UIImage, for quest: Quest) {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        let path = "\(uid)/\(quest.id ?? quest.title)/photo.png"
-        let ref = Storage.storage().reference().child(path)
-        guard let data = image.jpegData(compressionQuality: 0.8) else { return }
-        ref.putData(data, metadata: nil) { _, error in
+        guard let uid = Auth.auth().currentUser?.uid else {
+            print("‼️ upload aborted: no auth uid")
+            uploadError = "You must be signed in to upload."
+            return
+        }
+        // Path uses .jpg (matching the JPEG data we encode below).
+        let storagePath = "\(uid)/\(quest.id ?? quest.title)/photo.jpg"
+        guard let data = image.jpegData(compressionQuality: 0.8) else {
+            print("‼️ upload aborted: jpegData returned nil")
+            uploadError = "Could not encode the image. Try again."
+            return
+        }
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+        print("🚀 starting upload: path=\(storagePath), bytes=\(data.count), contentType=image/jpeg")
+        morphState.isUploading = true
+        Storage.storage().reference().child(storagePath).putData(data, metadata: metadata) { metadata, error in
             if let error = error {
-                print("‼️ upload failed:", error.localizedDescription)
+                let nsErr = error as NSError
+                let detail = "[\(nsErr.domain) \(nsErr.code)] \(error.localizedDescription)"
+                print("‼️ upload failed:", detail)
+                DispatchQueue.main.async {
+                    morphState.isUploading = false
+                    uploadError = "Upload failed.\n\(detail)\n\nIf this persists, check Firebase Storage rules allow writes to \(storagePath)."
+                }
                 return
             }
+            print("🚀 upload succeeded, metadata=\(String(describing: metadata))")
             let userRef = Firestore.firestore().collection("users").document(uid)
             Firestore.firestore().runTransaction({ txn, _ in
                 txn.updateData(
@@ -297,19 +501,22 @@ struct ContentView: View {
                     forDocument: userRef
                 )
                 let reward = Date().timeIntervalSince(quest.createdAt ?? Date()) <= 12*3600 ? 10 : 5
-                txn.updateData(["points": FieldValue.increment(Int64(reward))],
-                               forDocument: userRef)
+                txn.updateData(["points": FieldValue.increment(Int64(reward))], forDocument: userRef)
                 return nil
-            }) { _, err in
-                if let err = err {
-                    print("‼️ firestore tx:", err.localizedDescription)
-                }
-            }
+            }) { _, _ in }
             DispatchQueue.main.async {
-                imageToUpload = nil
-                withAnimation {
-                    tabStore.isHomeQuestOpen = false
-                    tabStore.selectedQuest = nil
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    morphState.isUploading = false
+                    morphState.isComplete = true
+                }
+                let success = UINotificationFeedbackGenerator()
+                success.notificationOccurred(.success)
+                // Auto-dismiss after 2.5s
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        morphState.quest = nil
+                        morphState.isComplete = false
+                    }
                 }
             }
         }
@@ -317,14 +524,12 @@ struct ContentView: View {
 
     @ViewBuilder
     private var mainContent: some View {
-        TabView(selection: $selectedTabLocal) {
-            NavigationStack {
-                HomeView()
-            }
-            .tag(TabItem.home)
+        TabView(selection: $selectedTab) {
+            HomeView(selectedQuest: $selectedQuest)
+                .tag(TabItem.home)
 
             NavigationStack {
-                QuestsView()
+                QuestsView(selectedQuest: $selectedQuest)
             }
             .tag(TabItem.quests)
 
@@ -349,136 +554,274 @@ struct ContentView: View {
 
     @ViewBuilder
     private var bottomOverlay: some View {
-        let _ = print("📍 bottomOverlay recompute: selectedTabLocal=\(selectedTabLocal), isHomeQuestOpenLocal=\(isHomeQuestOpenLocal), showActionButtons=\(showActionButtons)")
-        let fullWidth = UIScreen.main.bounds.width - 40
         let safeArea = UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.windows.first?.safeAreaInsets.bottom }
             .first ?? 15
 
-        if selectedTabLocal == .home {
-            ZStack(alignment: .bottom) {
-                HStack(spacing: 0) {
-                    Color.clear
-                        .frame(width: isHomeQuestOpenLocal ? 68 : fullWidth, height: 68)
-                        .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 40))
-                        .allowsHitTesting(false)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, safeArea * 0.3)
-                        .offset(y: 26)
-                        .animation(islandAnimation, value: isHomeQuestOpenLocal)
-                    Spacer()
-                }
-                if isHomeQuestOpenLocal && showActionButtons {
-                    let buttonSize: CGFloat = 68
-                    let spacing: CGFloat = 12
-                    let cameraWidth = fullWidth - (buttonSize * 2) - (spacing * 2)
-                    HStack(spacing: spacing) {
-                        Button {
-                            let generator = UIImpactFeedbackGenerator(style: .heavy)
-                            generator.impactOccurred()
-                            withAnimation(islandAnimation) { tabStore.isHomeQuestOpen = false }
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(Color(UIColor { trait in
-                                    trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
-                                }))
-                                .frame(width: buttonSize, height: buttonSize)
-                        }
-                        Button {
-                            let generator = UIImpactFeedbackGenerator(style: .heavy)
-                            generator.impactOccurred()
-                            imagePickerSource = .photoLibrary
-                            showImagePicker = true
-                        } label: {
-                            Image(systemName: "photo.on.rectangle")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(Color(UIColor { trait in
-                                    trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
-                                }))
-                                .frame(width: buttonSize, height: buttonSize)
-                                .adaptiveGlassEffect(in: Circle())
-                        }
-                        Button {
-                            let generator = UIImpactFeedbackGenerator(style: .heavy)
-                            generator.impactOccurred()
-                            imagePickerSource = .camera
-                            showImagePicker = true
-                        } label: {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(width: cameraWidth, height: buttonSize)
-                                .adaptiveGlassEffectTinted(color: .cougarBlue, in: RoundedRectangle(cornerRadius: 40))
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, safeArea * 0.3)
-                    .offset(y: 26)
-                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
-                }
-                FloatingTabBar()
-                    .padding(.bottom, safeArea * 0.3)
-                    .offset(y: 26)
-                    .opacity(isHomeQuestOpenLocal ? 0 : 1)
-                    .animation(islandAnimation, value: isHomeQuestOpenLocal)
+        FloatingTabBar(
+            selectedTab: $selectedTab,
+            selectedQuest: $selectedQuest,
+            onImagePicked: { image in
+                guard let quest = morphState.quest else { return }
+                uploadPhoto(image, for: quest)
+            },
+            onPresentQuestSheet: { quest in
+                print("🎯 ContentView received present, setting sheetQuest, current=\(String(describing: sheetQuest?.id))")
+                sheetQuest = quest
             }
-        } else {
-            FloatingTabBar()
-                .padding(.bottom, safeArea * 0.3)
-                .offset(y: 26)
-                .animation(islandAnimation, value: selectedTabLocal == .quests && tabStore.selectedQuest != nil)
-        }
+        )
+        .padding(.bottom, safeArea * 0.3)
+        .offset(y: 26)
+        .animation(islandAnimation, value: morphState.quest?.id)
+        .animation(islandAnimation, value: selectedTab == .quests && selectedQuest != nil)
+    }
+
+    var body: some View {
+        mainContent
+            .overlay(bottomOverlay, alignment: .bottom)
+            .sheet(item: $sheetQuest, onDismiss: {
+                // If user swipes the sheet down (rather than tapping X),
+                // make sure morphState gets cleared too.
+                if !morphState.isComplete {
+                    morphState.quest = nil
+                }
+            }) { quest in
+                QuestSheetView(quest: quest, parentUpload: { img in uploadPhoto(img, for: quest) })
+            }
+            .onChange(of: morphState.quest?.id) { newId in
+                // Backup: if morphState.quest is cleared (e.g. by upload completion
+                // auto-dismiss), make sure sheetQuest follows.
+                print("🎯 onChange morphState.quest?.id = \(newId ?? "nil")")
+                if newId == nil, sheetQuest != nil {
+                    sheetQuest = nil
+                }
+            }
+            .onChange(of: sheetQuest?.id) { newId in
+                print("🎯 onChange sheetQuest?.id = \(newId ?? "nil")")
+            }
+            .onChange(of: selectedTab) { newTab in
+                if newTab != .quests {
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) {
+                        selectedQuest = nil
+                    }
+                }
+                // Switching tabs ALWAYS clears any in-flight quest morph state,
+                // so a stale morphState.quest from a failed sheet attempt can't
+                // bleed onto HomeView's morph bar.
+                if morphState.quest != nil { morphState.quest = nil }
+                if sheetQuest != nil { sheetQuest = nil }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                isKeyboardVisible = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                isKeyboardVisible = false
+            }
+            .onChange(of: selectedQuest != nil) { hasQuest in
+                if hasQuest {
+                    let generator = UIImpactFeedbackGenerator(style: .soft)
+                    generator.impactOccurred()
+                }
+            }
+            .alert("Upload Failed", isPresented: Binding(
+                get: { uploadError != nil },
+                set: { newValue in if !newValue { uploadError = nil } }
+            ), presenting: uploadError) { _ in
+                Button("OK", role: .cancel) { uploadError = nil }
+            } message: { msg in
+                Text(msg)
+            }
+    }
+}
+
+// MARK: - Quest Sheet (presented from QuestsView path)
+
+struct QuestSheetView: View {
+    let quest: Quest
+    let parentUpload: (UIImage) -> Void
+    @ObservedObject private var morphState = MorphState.shared
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var showImagePicker = false
+    @State private var imagePickerSource: UIImagePickerController.SourceType = .photoLibrary
+    @State private var pickedImage: UIImage?
+
+    private var sheetSafeAreaBottom: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.windows.first?.safeAreaInsets.bottom }
+            .first ?? 15
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            mainContent
-            bottomOverlay
-                .zIndex(100)
-        }
-        .onReceive(tabStore.$selectedTab) { newTab in
-            print("📡 onReceive selectedTab → \(newTab) (isHomeQuestOpen=\(tabStore.isHomeQuestOpen))")
-            if tabStore.isHomeQuestOpen && newTab != .home {
-                print("📡 ignoring phantom tab change during morph")
-                tabStore.selectedTab = .home
-                return
-            }
-            selectedTabLocal = newTab
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-            isKeyboardVisible = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            isKeyboardVisible = false
-        }
-        .onReceive(tabStore.$isHomeQuestOpen) { open in
-            print("🟡 onReceive isHomeQuestOpen → \(open) [before mirror: local=\(isHomeQuestOpenLocal)]")
-            isHomeQuestOpenLocal = open
-            print("🟦 isHomeQuestOpenLocal is now \(isHomeQuestOpenLocal)")
-            if open {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                        showActionButtons = true
+            QuestView(
+                quest: quest,
+                isQuestOpen: Binding(
+                    get: { morphState.quest != nil },
+                    set: { newValue in
+                        if !newValue {
+                            morphState.quest = nil
+                            dismiss()
+                        }
                     }
+                )
+            )
+            .ignoresSafeArea()
+
+            MorphActionBar(
+                onDismiss: {
+                    let g = UIImpactFeedbackGenerator(style: .heavy)
+                    g.impactOccurred()
+                    morphState.quest = nil
+                    dismiss()
+                },
+                onPhotoLibrary: {
+                    print("📷 [sheet] Photo library tapped")
+                    let g = UIImpactFeedbackGenerator(style: .heavy)
+                    g.impactOccurred()
+                    imagePickerSource = .photoLibrary
+                    showImagePicker = true
+                },
+                onCapture: {
+                    print("📸 [sheet] Capture tapped")
+                    let g = UIImpactFeedbackGenerator(style: .heavy)
+                    g.impactOccurred()
+                    requestCameraThenPresent()
                 }
-            } else {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    showActionButtons = false
-                }
-                tabStore.selectedQuest = nil
-            }
+            )
+            // Sheets respect bottom safe area differently than .overlay does;
+            // copying the main bar's offset(y:26) pushed the bar past the safe
+            // area. Just use a simple padding above the home indicator.
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
         }
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(
                 source: imagePickerSource == .camera ? .camera : .library,
-                image: $imageToUpload
+                image: $pickedImage
             )
         }
-        .onChange(of: imageToUpload) { image in
-            if let quest = tabStore.selectedQuest, let img = image {
-                uploadPhoto(img, for: quest)
+        .onChange(of: pickedImage) { image in
+            guard let img = image else { return }
+            parentUpload(img)
+            pickedImage = nil
+            // Keep the sheet up so the morph bar can show "Uploading…" / "Quest Complete!"
+            // The parentUpload will set morphState.quest = nil on completion, dismissing.
+        }
+    }
+
+    private func requestCameraThenPresent() {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        print("📸 [sheet] camera auth status: \(status.rawValue)")
+        switch status {
+        case .authorized:
+            imagePickerSource = .camera
+            showImagePicker = true
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    imagePickerSource = granted && UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+                    showImagePicker = true
+                }
             }
+        case .denied, .restricted:
+            imagePickerSource = .photoLibrary
+            showImagePicker = true
+        @unknown default:
+            imagePickerSource = .photoLibrary
+            showImagePicker = true
+        }
+    }
+}
+
+// MARK: - Reusable Morph Action Bar (X / photo / capture / uploading / complete)
+
+struct MorphActionBar: View {
+    let onDismiss: () -> Void
+    let onPhotoLibrary: () -> Void
+    let onCapture: () -> Void
+    @ObservedObject private var morphState = MorphState.shared
+
+    var body: some View {
+        ZStack {
+            Color.clear
+                .frame(height: 68)
+                .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 50))
+                .allowsHitTesting(false)
+
+            Group {
+                if morphState.isComplete || morphState.isQuestAlreadyCompleted {
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("Quest Complete!")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .adaptiveGlassEffectTinted(color: .cougarBlue, in: RoundedRectangle(cornerRadius: 28))
+                    .padding(.horizontal, 6)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onDismiss() }
+                } else if morphState.isUploading {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                        Text("Uploading…")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .adaptiveGlassEffectTinted(color: .cougarBlue, in: RoundedRectangle(cornerRadius: 28))
+                    .padding(.horizontal, 6)
+                } else {
+                    HStack(spacing: 8) {
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(Color(UIColor { trait in
+                                    trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
+                                }))
+                                .frame(width: 56, height: 56)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: onPhotoLibrary) {
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(Color(UIColor { trait in
+                                    trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
+                                }))
+                                .frame(width: 56, height: 56)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: onCapture) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "camera.fill")
+                                Text("Capture")
+                            }
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .adaptiveGlassEffectTinted(color: .cougarBlue, in: RoundedRectangle(cornerRadius: 28))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 6)
+                    .frame(height: 68)
+                }
+            }
+            .animation(.spring(response: 0.45, dampingFraction: 0.85), value: morphState.isUploading)
+            .animation(.spring(response: 0.45, dampingFraction: 0.85), value: morphState.isComplete)
         }
     }
 }

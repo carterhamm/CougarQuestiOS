@@ -14,7 +14,9 @@ import FirebaseAuth
 import FirebaseFirestore
 
 struct HomeView: View {
-    @ObservedObject var tabStore = TabPresentationStore.shared
+    @Binding var selectedQuest: Quest?
+    @ObservedObject private var morphState = MorphState.shared
+    @State private var path: [String] = []
     @State private var quests: [Quest] = []
     @State private var completedQuestTitles: [String] = []
     @State private var isLoading: Bool = true
@@ -41,6 +43,34 @@ struct HomeView: View {
     }
 
     var body: some View {
+        NavigationStack(path: $path) {
+            scrollContent
+                .ignoresSafeArea(edges: .top)
+                .navigationDestination(for: String.self) { id in
+                    if let quest = quests.first(where: { $0.id == id }) {
+                        if #available(iOS 18, *) {
+                            QuestView(quest: quest, isQuestOpen: .constant(true))
+                                .navigationTransition(.zoom(sourceID: id, in: namespace))
+                        } else {
+                            QuestView(quest: quest, isQuestOpen: .constant(true))
+                        }
+                    }
+                }
+        }
+        .onChange(of: path) { newPath in
+            if newPath.isEmpty && morphState.quest != nil {
+                morphState.quest = nil
+            }
+        }
+        .onChange(of: morphState.quest?.id) { newId in
+            if newId == nil && !path.isEmpty {
+                path.removeAll()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var scrollContent: some View {
         ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     // MARK: Hero Section
@@ -109,7 +139,8 @@ struct HomeView: View {
                     } else {
                         ForYouSectionView(
                             quests: forYouQuests,
-                            namespace: namespace
+                            namespace: namespace,
+                            path: $path
                         )
                         .environmentObject(profileVM)
                     }
@@ -135,7 +166,8 @@ struct HomeView: View {
                     } else {
                         CompletedSectionView(
                             quests: completedQuestsList,
-                            namespace: namespace
+                            namespace: namespace,
+                            path: $path
                         )
                         .environmentObject(profileVM)
                     }
@@ -171,7 +203,24 @@ struct HomeView: View {
                 Firestore.firestore().collection("users").document(uid)
                     .addSnapshotListener { snapshot, _ in
                         let array = snapshot?.data()?["completedQuests"] as? [String] ?? []
-                        completedQuestTitles = array
+                        // Always update the shared MorphState immediately so the
+                        // morph bar can show "Quest Complete!" when re-opening
+                        // a finished quest. The local re-filter below is what
+                        // gets deferred (to avoid mid-zoom tile reshuffles).
+                        morphState.completedQuestTitles = Set(array)
+                        // Defer the section re-filter so the .zoom back-transition
+                        // can complete before the source tile moves from For You → Completed.
+                        let isInQuest = !path.isEmpty
+                        let updateBlock = {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                completedQuestTitles = array
+                            }
+                        }
+                        if isInQuest {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: updateBlock)
+                        } else {
+                            updateBlock()
+                        }
                     }
                 // Fetch user name for greeting
                 let userRef = Firestore.firestore().collection("users").document(uid)
@@ -201,13 +250,14 @@ struct HomeView: View {
             }
         }
     }
+
 }
 
 struct ForYouSectionView: View {
     let quests: [Quest]
     let namespace: Namespace.ID
-    @ObservedObject var tabStore = TabPresentationStore.shared
-
+    @Binding var path: [String]
+    @ObservedObject var morphState = MorphState.shared
     @EnvironmentObject var profileVM: ProfileViewModel
 
     var body: some View {
@@ -221,9 +271,13 @@ struct ForYouSectionView: View {
                 HStack(spacing: 16) {
                     ForEach(quests) { quest in
                         if #available(iOS 18, *) {
-                            NavigationLink {
-                                QuestView(quest: quest)
-                                    .navigationTransition(.zoom(sourceID: "\(quest.id)", in: namespace))
+                            Button {
+                                let generator = UIImpactFeedbackGenerator(style: .rigid)
+                                generator.impactOccurred()
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                    morphState.quest = quest
+                                }
+                                if let id = quest.id { path.append(id) }
                             } label: {
                                 ZStack(alignment: .bottomLeading) {
                                     if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
@@ -251,7 +305,7 @@ struct ForYouSectionView: View {
                                 .frame(width: 150, height: 150)
                                 .cornerRadius(20)
                             }
-                            .matchedTransitionSource(id: "\(quest.id)", in: namespace)
+                            .matchedTransitionSource(id: quest.id ?? "", in: namespace)
                             .buttonStyle(.plain)
                             .contextMenu {
                                 Button {
@@ -264,32 +318,20 @@ struct ForYouSectionView: View {
                                 }
                                 if profileVM.isAdmin {
                                     Button(role: .destructive) {
-                                        FirebaseService.shared.deleteQuest(quest) { error in
-                                            if let error = error {
-                                                print("Failed to delete:", error.localizedDescription)
-                                            } else {
-                                                // Remove it locally so UI updates
-                                                // Note: This will only update HomeView if passed as a Binding or via State
-                                            }
-                                        }
+                                        FirebaseService.shared.deleteQuest(quest) { _ in }
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
                             }
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    tabStore.selectedQuest = quest; print("🟢 QUEST TAP: \(quest.title)")
-                                    let generator = UIImpactFeedbackGenerator(style: .rigid)
-                                    generator.impactOccurred()
-                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                                        tabStore.isHomeQuestOpen = true
-                                    }
-                                }
-                            )
                         } else {
-                            NavigationLink {
-                                QuestView(quest: quest)
+                            Button {
+                                let generator = UIImpactFeedbackGenerator(style: .rigid)
+                                generator.impactOccurred()
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                    morphState.quest = quest
+                                }
+                                if let id = quest.id { path.append(id) }
                             } label: {
                                 ZStack(alignment: .bottomLeading) {
                                     if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
@@ -329,29 +371,12 @@ struct ForYouSectionView: View {
                                 }
                                 if profileVM.isAdmin {
                                     Button(role: .destructive) {
-                                        FirebaseService.shared.deleteQuest(quest) { error in
-                                            if let error = error {
-                                                print("Failed to delete:", error.localizedDescription)
-                                            } else {
-                                                // Remove it locally so UI updates
-                                                // Note: This will only update HomeView if passed as a Binding or via State
-                                            }
-                                        }
+                                        FirebaseService.shared.deleteQuest(quest) { _ in }
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
                             }
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    tabStore.selectedQuest = quest; print("🟢 QUEST TAP: \(quest.title)")
-                                    let generator = UIImpactFeedbackGenerator(style: .rigid)
-                                    generator.impactOccurred()
-                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                                        tabStore.isHomeQuestOpen = true
-                                    }
-                                }
-                            )
                         }
                     }
                 }
@@ -364,8 +389,8 @@ struct ForYouSectionView: View {
 struct CompletedSectionView: View {
     let quests: [Quest]
     let namespace: Namespace.ID
-    @ObservedObject var tabStore = TabPresentationStore.shared
-
+    @Binding var path: [String]
+    @ObservedObject var morphState = MorphState.shared
     @EnvironmentObject var profileVM: ProfileViewModel
 
     var body: some View {
@@ -378,9 +403,13 @@ struct CompletedSectionView: View {
                 HStack(spacing: 16) {
                     ForEach(quests) { quest in
                         if #available(iOS 18, *) {
-                            NavigationLink {
-                                QuestView(quest: quest)
-                                    .navigationTransition(.zoom(sourceID: "\(quest.id)", in: namespace))
+                            Button {
+                                let generator = UIImpactFeedbackGenerator(style: .rigid)
+                                generator.impactOccurred()
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                    morphState.quest = quest
+                                }
+                                if let id = quest.id { path.append(id) }
                             } label: {
                                 ZStack(alignment: .bottomLeading) {
                                     if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
@@ -408,7 +437,7 @@ struct CompletedSectionView: View {
                                 .frame(width: 150, height: 150)
                                 .cornerRadius(20)
                             }
-                            .matchedTransitionSource(id: "\(quest.id)", in: namespace)
+                            .matchedTransitionSource(id: quest.id ?? "", in: namespace)
                             .buttonStyle(.plain)
                             .contextMenu {
                                 Button {
@@ -421,32 +450,20 @@ struct CompletedSectionView: View {
                                 }
                                 if profileVM.isAdmin {
                                     Button(role: .destructive) {
-                                        FirebaseService.shared.deleteQuest(quest) { error in
-                                            if let error = error {
-                                                print("Failed to delete:", error.localizedDescription)
-                                            } else {
-                                                // Remove it locally so UI updates
-                                                // Note: This will only update HomeView if passed as a Binding or via State
-                                            }
-                                        }
+                                        FirebaseService.shared.deleteQuest(quest) { _ in }
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
                             }
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    tabStore.selectedQuest = quest; print("🟢 QUEST TAP: \(quest.title)")
-                                    let generator = UIImpactFeedbackGenerator(style: .rigid)
-                                    generator.impactOccurred()
-                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                                        tabStore.isHomeQuestOpen = true
-                                    }
-                                }
-                            )
                         } else {
-                            NavigationLink {
-                                QuestView(quest: quest)
+                            Button {
+                                let generator = UIImpactFeedbackGenerator(style: .rigid)
+                                generator.impactOccurred()
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                    morphState.quest = quest
+                                }
+                                if let id = quest.id { path.append(id) }
                             } label: {
                                 ZStack(alignment: .bottomLeading) {
                                     if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
@@ -486,29 +503,12 @@ struct CompletedSectionView: View {
                                 }
                                 if profileVM.isAdmin {
                                     Button(role: .destructive) {
-                                        FirebaseService.shared.deleteQuest(quest) { error in
-                                            if let error = error {
-                                                print("Failed to delete:", error.localizedDescription)
-                                            } else {
-                                                // Remove it locally so UI updates
-                                                // Note: This will only update HomeView if passed as a Binding or via State
-                                            }
-                                        }
+                                        FirebaseService.shared.deleteQuest(quest) { _ in }
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
                             }
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    tabStore.selectedQuest = quest; print("🟢 QUEST TAP: \(quest.title)")
-                                    let generator = UIImpactFeedbackGenerator(style: .rigid)
-                                    generator.impactOccurred()
-                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                                        tabStore.isHomeQuestOpen = true
-                                    }
-                                }
-                            )
                         }
                     }
                 }
@@ -578,17 +578,17 @@ struct TeamProgressCard: View {
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Color.clear
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.cougarBlue.opacity(0.15))
                         .frame(height: 8)
-                        .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 4))
-                    Color.clear
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.cougarBlue)
                         .frame(
                             width: totalCount > 0
                                 ? geo.size.width * CGFloat(completedCount) / CGFloat(totalCount)
                                 : 0,
                             height: 8
                         )
-                        .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: RoundedRectangle(cornerRadius: 4))
                         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: completedCount)
                 }
             }
@@ -605,7 +605,7 @@ struct TeamProgressCard: View {
 
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
-        HomeView()
+        HomeView(selectedQuest: .constant(nil))
             .environmentObject(ProfileViewModel())
     }
 }
