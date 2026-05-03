@@ -61,19 +61,22 @@ Host this **exactly** at `https://cougarquest.com/.well-known/apple-app-site-ass
 
 Replace `TEAMID` with your Apple Developer Team ID (Xcode → target → Signing & Capabilities → Team).
 
-### 4. Web fallback page at `/q/<id>`
+### 4. Web fallback page at `/quest/<id>`
 
-The page needs to:
+**Already built** — `CougarQuestWeb/src/pages/Quest.tsx` exists and is routed via `App.tsx` (`<Route path="quest/:id" element={<Quest />} />`).
 
-- Look up the quest from Firestore (Web SDK or static rendering at deploy time).
-- Render the quest's photo, title, address, description, and a "Open in Maps" link.
-- Include the iOS Smart App Banner so non-clip iOS browsers can suggest the app:
+The iOS share-link path was updated from `/q/<id>` → `/quest/<id>` to match the existing web. Single canonical shape, no redirect required.
 
-  ```html
-  <meta name="apple-itunes-app" content="app-id=YOUR_APP_STORE_ID, app-clip-bundle-id=tony.stark.CougarQuest.Clip">
-  ```
+**One nice-to-have** for the rich preview when someone shares the link in iMessage: add Open Graph + Smart App Banner meta tags to `CougarQuestWeb/index.html` (or per-page if you SSR). Without these, Messages just shows the URL text:
 
-This page can be a simple Next.js / Vite / static HTML page hosted on Firebase Hosting (same Firebase project, free tier covers this easily). Build this alongside the admin dashboard since both need Firebase Web SDK; share auth + read code.
+```html
+<meta name="apple-itunes-app" content="app-id=YOUR_APP_STORE_ID, app-clip-bundle-id=tony.stark.CougarQuest.Clip">
+<meta property="og:title" content="CougarQuest">
+<meta property="og:image" content="https://cougarquest.com/og-default.png">
+<meta property="og:description" content="BYU Fathers and Sons quest sharing">
+```
+
+For the per-quest preview image (so iMessage shows the quest's photo), you'd need server-side rendering or a Cloud Function that renders the page with the quest's `photoURL` injected. Not required for the link to work — just nicer presentation.
 
 ### 5. App Clip target (Xcode)
 

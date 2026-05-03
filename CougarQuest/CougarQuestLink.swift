@@ -16,15 +16,15 @@ enum CougarQuestLink {
     static let host = "cougarquest.com"
 
     /// Build a shareable URL for a single quest.
-    /// Format: https://cougarquest.com/q/<questId>
+    /// Format: https://cougarquest.com/quest/<questId>
     /// - Tapped on iOS with the app installed → opens the app, deep-links to the quest.
     /// - Tapped on iOS without the app → offers the App Clip (one-quest preview).
-    /// - Tapped on web → renders the quest detail page (web fallback).
+    /// - Tapped on web → renders the existing CougarQuestWeb /quest/:id page.
     static func url(forQuestId id: String) -> URL? {
         var c = URLComponents()
         c.scheme = "https"
         c.host = host
-        c.path = "/q/\(id)"
+        c.path = "/quest/\(id)"
         return c.url
     }
 
@@ -35,9 +35,9 @@ enum CougarQuestLink {
             url.scheme == "https" || url.scheme == "http",
             url.host == host
         else { return nil }
-        // Path is "/q/<id>" — split returns ["", "q", "<id>"] under split(separator:)
+        // Path is "/quest/<id>"
         let parts = url.path.split(separator: "/").map(String.init)
-        guard parts.count == 2, parts[0] == "q" else { return nil }
+        guard parts.count == 2, parts[0] == "quest" else { return nil }
         let id = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
         return id.isEmpty ? nil : id
     }
