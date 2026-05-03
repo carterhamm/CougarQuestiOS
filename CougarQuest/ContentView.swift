@@ -209,9 +209,7 @@ struct FloatingTabBar: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(Color(UIColor { trait in
-                        trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
-                    }))
+                    .foregroundColor(.white)
                     .frame(width: buttonSize, height: buttonSize)
                     .contentShape(Rectangle())
             }
@@ -227,9 +225,7 @@ struct FloatingTabBar: View {
             } label: {
                 Image(systemName: "photo.on.rectangle")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(Color(UIColor { trait in
-                        trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
-                    }))
+                    .foregroundColor(.white)
                     .frame(width: buttonSize, height: buttonSize)
                     .contentShape(Rectangle())
             }
@@ -330,10 +326,8 @@ struct FloatingTabBar: View {
     @ViewBuilder
     private func expandedQuestContent(quest: Quest) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Drag handle — single DragGesture handles both tap and drag.
-            // (Combining .onTapGesture with DragGesture(minimumDistance: 0)
-            // causes them to fight; SwiftUI hands the touch to one or the
-            // other and the user sees nothing happen.)
+            // Drag handle — extends nearly edge-to-edge (negates the parent's
+            // .padding(.horizontal, 16) with -12pt so only ~4pt margin on each side).
             ZStack {
                 Capsule()
                     .fill(Color.black)
@@ -341,6 +335,7 @@ struct FloatingTabBar: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 32) // generous hit target
+            .padding(.horizontal, -12)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -428,7 +423,15 @@ struct FloatingTabBar: View {
                         .foregroundColor(.cougarBlue)
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
-                        .adaptiveGlassEffectTinted(color: Color.white.opacity(0.5), in: RoundedRectangle(cornerRadius: 22))
+                        // Light mode → subtle blue tint; dark mode → near-white.
+                        .adaptiveGlassEffectTinted(
+                            color: Color(UIColor { trait in
+                                trait.userInterfaceStyle == .dark
+                                    ? UIColor.white.withAlphaComponent(0.5)
+                                    : (UIColor(named: "CougarBlue") ?? .systemBlue).withAlphaComponent(0.18)
+                            }),
+                            in: RoundedRectangle(cornerRadius: 22)
+                        )
                 }
                 .buttonStyle(.plain)
 
@@ -689,12 +692,17 @@ struct QuestSheetView: View {
                     requestCameraThenPresent()
                 }
             )
-            // Sheets respect bottom safe area differently than .overlay does;
-            // copying the main bar's offset(y:26) pushed the bar past the safe
-            // area. Just use a simple padding above the home indicator.
+            // Match the main FloatingTabBar's vertical position EXACTLY.
+            // The trick is that the sheet's content respects safe area while
+            // the main bar's host (mainContent.overlay(...)) extends through
+            // it. We compensate by having the ZStack ignore the bottom safe
+            // area below — then the same padding+offset math lands at the
+            // same screen coordinates.
             .padding(.horizontal, 20)
-            .padding(.bottom, 12)
+            .padding(.bottom, sheetSafeAreaBottom * 0.3)
+            .offset(y: 26)
         }
+        .ignoresSafeArea(edges: .bottom)
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(
                 source: imagePickerSource == .camera ? .camera : .library,
@@ -783,9 +791,7 @@ struct MorphActionBar: View {
                         Button(action: onDismiss) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(Color(UIColor { trait in
-                                    trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
-                                }))
+                                .foregroundColor(.white)
                                 .frame(width: 56, height: 56)
                                 .contentShape(Rectangle())
                         }
@@ -794,9 +800,7 @@ struct MorphActionBar: View {
                         Button(action: onPhotoLibrary) {
                             Image(systemName: "photo.on.rectangle")
                                 .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(Color(UIColor { trait in
-                                    trait.userInterfaceStyle == .dark ? .white : UIColor(named: "CougarBlue") ?? .blue
-                                }))
+                                .foregroundColor(.white)
                                 .frame(width: 56, height: 56)
                                 .contentShape(Rectangle())
                         }

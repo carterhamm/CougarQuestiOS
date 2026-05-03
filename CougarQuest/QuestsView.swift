@@ -43,10 +43,14 @@ struct QuestsView: View {
                         }
                     } label: {
                         ZStack {
-                            // Border ring: CougarBlue for incomplete (action), white for completed (subtle).
-                            Circle()
-                                .fill(isCompleted ? Color.white : Color.cougarBlue)
+                            // Border ring: CougarBlue for incomplete (action),
+                            // white for completed (subtle). Glass-tinted for depth.
+                            Color.clear
                                 .frame(width: 50, height: 50)
+                                .adaptiveGlassEffectTinted(
+                                    color: isCompleted ? Color.white : Color.cougarBlue,
+                                    in: Circle()
+                                )
                             // Quest image
                             if let url = URL(string: item.quest.photoURL) {
                                 KFImage(url)
@@ -58,7 +62,6 @@ struct QuestsView: View {
                                     .frame(width: 44, height: 44)
                                     .clipShape(Circle())
                             } else {
-                                // Fallback icon
                                 Image(systemName: "mappin.and.ellipse")
                                     .font(.title2)
                                     .foregroundColor(.gray)

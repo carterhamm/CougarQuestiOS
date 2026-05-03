@@ -318,7 +318,7 @@ struct ProfileView: View {
         Button {
             showLogOutConfirm = true
         } label: {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
                 Text("Log Out")
                     .fontWeight(.semibold)
@@ -328,7 +328,7 @@ struct ProfileView: View {
             .padding(.vertical, 14)
             .adaptiveGlassEffectTinted(
                 color: Color.red.opacity(0.10),
-                in: RoundedRectangle(cornerRadius: 16)
+                in: Capsule()
             )
         }
         .buttonStyle(.plain)
