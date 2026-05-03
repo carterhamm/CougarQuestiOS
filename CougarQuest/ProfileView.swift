@@ -13,6 +13,7 @@ struct ProfileView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var viewModel: ProfileViewModel
     @ObservedObject private var morphState = MorphState.shared
+    @ObservedObject private var iconManager = AppIconManager.shared
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var isEditingName = false
@@ -53,6 +54,7 @@ struct ProfileView: View {
                         teamCard
                         parentInfoCard
                         sonsCard
+                        appIconCard
                         logOutButton
                         Color.clear.frame(height: 120)
                     }
@@ -310,6 +312,70 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    // MARK: - App Icon Picker
+
+    private var appIconCard: some View {
+        cardContainer(title: "App Icon", icon: "app.dashed") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Pick your home-screen look. Available in the full app.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                HStack(spacing: 12) {
+                    ForEach(AppIconOption.all) { option in
+                        appIconChoice(option: option)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func appIconChoice(option: AppIconOption) -> some View {
+        let isSelected = iconManager.current.id == option.id
+        Button {
+            Task { await iconManager.select(option) }
+        } label: {
+            VStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.gray.opacity(0.15))
+                        .frame(width: 72, height: 72)
+                    if let assetName = option.previewAssetName,
+                       let img = UIImage(named: assetName) {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    } else {
+                        // Fallback when no preview asset is in the bundle yet.
+                        Text(String(option.displayName.prefix(1)))
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundColor(.cougarBlue)
+                    }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(isSelected ? Color.cougarBlue : Color.clear, lineWidth: 3)
+                )
+
+                HStack(spacing: 4) {
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.cougarBlue)
+                            .font(.caption)
+                    }
+                    Text(option.displayName)
+                        .font(.caption)
+                        .fontWeight(isSelected ? .bold : .medium)
+                        .foregroundColor(isSelected ? .cougarBlue : .primary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Log Out
