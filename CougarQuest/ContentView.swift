@@ -13,6 +13,21 @@ import FirebaseFirestore
 import FirebaseStorage
 import Kingfisher
 
+/// Routes incoming Universal Links / App Clip URLs into the running app.
+/// `CougarQuestApp.swift`'s `.onOpenURL` writes here; `ContentView` observes
+/// `pendingQuestId` and opens the matching quest.
+final class DeepLinkState: ObservableObject {
+    static let shared = DeepLinkState()
+    @Published var pendingQuestId: String? = nil
+    private init() {}
+
+    func handle(_ url: URL) {
+        if let id = CougarQuestLink.questId(from: url) {
+            pendingQuestId = id
+        }
+    }
+}
+
 final class MorphState: ObservableObject {
     static let shared = MorphState()
     @Published var quest: Quest? = nil
@@ -457,11 +472,27 @@ struct ContentView: View {
     @EnvironmentObject var profileVM: ProfileViewModel
     @EnvironmentObject var authVM: AuthViewModel
     @ObservedObject private var morphState = MorphState.shared
+    @ObservedObject private var deepLink = DeepLinkState.shared
     @State private var selectedTab: TabItem = .home
     @State private var isKeyboardVisible: Bool = false
     @State private var selectedQuest: Quest? = nil
     @State private var sheetQuest: Quest? = nil
     @State private var uploadError: String? = nil
+
+    private func handleDeepLinkQuest(id: String) {
+        // Fetch the quest by id and open it on the QuestsView path so the
+        // sheet UI we already have for this kicks in.
+        Firestore.firestore().collection("quests").document(id).getDocument { snapshot, _ in
+            guard let snapshot = snapshot, snapshot.exists,
+                  let quest = try? snapshot.data(as: Quest.self) else { return }
+            DispatchQueue.main.async {
+                selectedTab = .quests
+                morphState.quest = quest
+                sheetQuest = quest
+                deepLink.pendingQuestId = nil
+            }
+        }
+    }
 
     private let islandAnimation = Animation.spring(response: 0.65, dampingFraction: 0.65, blendDuration: 0.85)
 
@@ -636,6 +667,15 @@ struct ContentView: View {
             } message: { msg in
                 Text(msg)
             }
+            .onChange(of: deepLink.pendingQuestId) { newId in
+                guard let id = newId else { return }
+                handleDeepLinkQuest(id: id)
+            }
+            .onAppear {
+                if let id = deepLink.pendingQuestId {
+                    handleDeepLinkQuest(id: id)
+                }
+            }
     }
 }
 
@@ -659,19 +699,24 @@ struct QuestSheetView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            QuestView(
-                quest: quest,
-                isQuestOpen: Binding(
-                    get: { morphState.quest != nil },
-                    set: { newValue in
-                        if !newValue {
-                            morphState.quest = nil
-                            dismiss()
+            // NavigationStack wrap so QuestView's `.toolbar` (Share button)
+            // surfaces in the sheet path too. Background hidden so the
+            // QuestView's hero photo bleeds up under the nav bar.
+            NavigationStack {
+                QuestView(
+                    quest: quest,
+                    isQuestOpen: Binding(
+                        get: { morphState.quest != nil },
+                        set: { newValue in
+                            if !newValue {
+                                morphState.quest = nil
+                                dismiss()
+                            }
                         }
-                    }
+                    )
                 )
-            )
-            .ignoresSafeArea()
+                .ignoresSafeArea()
+            }
 
             MorphActionBar(
                 onDismiss: {

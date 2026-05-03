@@ -383,6 +383,26 @@ struct QuestView: View {
         .onDisappear {
             isQuestOpen = false
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if let id = quest.id, let url = CougarQuestLink.url(forQuestId: id) {
+                    ShareLink(
+                        item: url,
+                        subject: Text(quest.title),
+                        message: Text("Check out this CougarQuest: \(quest.title)\n\(quest.address)")
+                    ) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(8)
+                            .background(
+                                Circle().fill(Color.black.opacity(0.35))
+                            )
+                    }
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 }
 
