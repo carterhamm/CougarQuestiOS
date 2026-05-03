@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import AVFoundation
+import Combine
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
@@ -24,8 +25,14 @@ final class DeepLinkState: ObservableObject {
     func handle(_ url: URL) {
         let id = CougarQuestLink.questId(from: url)
         print("🔗 DeepLinkState.handle url=\(url.absoluteString) parsed id=\(id ?? "nil")")
-        if let id = id {
-            pendingQuestId = id
+        guard let id = id else { return }
+        // Defer to the next runloop. Setting an @Published synchronously
+        // inside .onOpenURL / .onContinueUserActivity sometimes loses the
+        // change to SwiftUI's diff (it's still mid-update for the URL
+        // delivery). A trailing dispatch makes the observation reliable.
+        DispatchQueue.main.async { [weak self] in
+            print("🔗 setting pendingQuestId = \(id)")
+            self?.pendingQuestId = id
         }
     }
 }
@@ -89,8 +96,11 @@ struct FloatingTabBar: View {
     }
 
     private var capsuleHeight: CGFloat {
+        // Expanded bar is ~12% taller than before so the hero photo can
+        // breathe and the description can grow to multiple lines without
+        // shoving the View Quest / Navigate buttons.
         (selectedTab == .quests && selectedQuest != nil)
-            ? UIScreen.main.bounds.height * 0.36
+            ? UIScreen.main.bounds.height * 0.40
             : 68
     }
 
@@ -123,7 +133,9 @@ struct FloatingTabBar: View {
             if selectedTab == .quests, let quest = selectedQuest {
                 expandedQuestContent(quest: quest)
                     .frame(height: capsuleHeight - 80, alignment: .top)
-                    .offset(y: -70 + dragOffset)
+                    // -80 (was -70) so the top of expandedQuestContent
+                    // sits exactly at the top of the bar (no 10pt gap).
+                    .offset(y: -80 + dragOffset)
                     .zIndex(1)
             }
 
@@ -373,6 +385,11 @@ struct FloatingTabBar: View {
                 // Single drag gesture: drag down to dismiss, tap-near-top
                 // also dismisses (the handle indicator is at the top edge).
                 .gesture(
+                    // No visual drag handle anymore — the photo itself is the
+                    // gesture target. Generous, easy-to-trigger thresholds:
+                    //   • drag > 25pt down → dismiss
+                    //   • drag with downward velocity > 200pt/s → dismiss
+                    //   • basically a tap (≤ 6pt total movement) → dismiss
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
                             if value.translation.height > 0 {
@@ -382,10 +399,10 @@ struct FloatingTabBar: View {
                         .onEnded { value in
                             let dx = abs(value.translation.width)
                             let dy = value.translation.height
-                            if dy > 50 {
+                            let downwardVelocity = value.predictedEndTranslation.height - value.translation.height
+                            if dy > 25 || downwardVelocity > 200 {
                                 dismissExpanded()
-                            } else if dx < 5 && abs(dy) < 5 && value.startLocation.y < 30 {
-                                // Tapped right on the drag handle area
+                            } else if dx < 6 && abs(dy) < 6 {
                                 dismissExpanded()
                             } else {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -400,8 +417,8 @@ struct FloatingTabBar: View {
             // the bar's outer glass.
             Text(quest.description)
                 .font(.subheadline)
-                .foregroundColor(.primary)
-                .lineLimit(3)
+                .foregroundColor(.black)
+                .lineLimit(5)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 12)
@@ -491,17 +508,7 @@ struct FloatingTabBar: View {
             .frame(height: 130)
             .allowsHitTesting(false)
 
-            // Drag-handle indicator at the very top
-            VStack {
-                Capsule()
-                    .fill(Color.white.opacity(0.95))
-                    .frame(width: 44, height: 5)
-                    .padding(.top, 10)
-                Spacer()
-            }
-            .frame(height: 130)
-            .allowsHitTesting(false)
-
+            // No visual drag handle — the photo IS the gesture target.
             // Title + address (left) and completion badge (right)
             HStack(alignment: .bottom, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -774,14 +781,12 @@ struct ContentView: View {
             } message: { msg in
                 Text(msg)
             }
-            .onChange(of: deepLink.pendingQuestId) { newId in
-                guard let id = newId else { return }
+            // .onReceive on the publisher directly is more reliable than
+            // .onChange when the @Published is set during a callback chain
+            // (.onOpenURL, .onContinueUserActivity).
+            .onReceive(deepLink.$pendingQuestId.compactMap { $0 }) { id in
+                print("🔗 ContentView received pendingQuestId=\(id)")
                 handleDeepLinkQuest(id: id)
-            }
-            .onAppear {
-                if let id = deepLink.pendingQuestId {
-                    handleDeepLinkQuest(id: id)
-                }
             }
     }
 }

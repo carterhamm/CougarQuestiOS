@@ -186,9 +186,13 @@ struct HomeView: View {
                         }
                     }
                     
-                    // Extra vertical spacing for scrolling
+                    // Extra vertical spacing for scrolling.
+                    // Half-height when the Completed Quests section is visible
+                    // — that section already adds significant vertical content,
+                    // so the original 300pt of trailing space ends up feeling
+                    // empty / over-scrolled.
                     Color.clear
-                        .frame(height: 300)
+                        .frame(height: completedQuestsList.isEmpty ? 300 : 150)
                 }
             }
             .ignoresSafeArea(edges: .top)
