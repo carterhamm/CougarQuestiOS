@@ -12,7 +12,10 @@ import FirebaseFirestore
 // MARK: - Main View
 
 struct LeaderboardView: View {
-    @StateObject private var viewModel = LeaderboardViewModel()
+    // Hoisted to a shared singleton (instantiated at app launch by ContentView)
+    // so Firestore fetch starts BEFORE the user first taps the Standings tab.
+    // Eliminates the brief freeze when transitioning from Quests → Standings.
+    @ObservedObject private var viewModel = LeaderboardViewModel.shared
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -306,6 +309,8 @@ private struct RankingRow: View {
 // MARK: - ViewModel
 
 class LeaderboardViewModel: ObservableObject {
+    static let shared = LeaderboardViewModel()
+
     struct LeaderboardUser: Identifiable {
         let id: String
         let displayName: String
@@ -316,7 +321,7 @@ class LeaderboardViewModel: ObservableObject {
     @Published var userRank: Int?
 
     private let db = Firestore.firestore()
-    private let currentUID = Auth.auth().currentUser?.uid
+    private var currentUID: String? { Auth.auth().currentUser?.uid }
 
     var currentUserEntry: LeaderboardUser? {
         guard let uid = currentUID else { return nil }

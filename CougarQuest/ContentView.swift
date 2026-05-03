@@ -552,6 +552,10 @@ struct ContentView: View {
         }
         .onAppear {
             UITabBar.appearance().isHidden = true
+            // Prefetch leaderboard data so the first tap on the Standings tab
+            // doesn't trigger a fresh Firestore query mid-tab-transition. The
+            // singleton's first access happens here, on root view appearance.
+            LeaderboardViewModel.shared.fetchLeaderboard()
         }
     }
 
