@@ -325,40 +325,37 @@ struct FloatingTabBar: View {
 
     @ViewBuilder
     private func expandedQuestContent(quest: Quest) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Drag handle — extends nearly edge-to-edge (negates the parent's
-            // .padding(.horizontal, 16) with -12pt so only ~4pt margin on each side).
-            ZStack {
-                Capsule()
-                    .fill(Color.black)
-                    .frame(width: 50, height: 5)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 32) // generous hit target
-            .padding(.horizontal, -12)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        if value.translation.height > 0 {
-                            dragOffset = value.translation.height
-                        }
-                    }
-                    .onEnded { value in
-                        let dx = abs(value.translation.width)
-                        let dy = value.translation.height
-                        if dy > 50 {
-                            dismissExpanded()
-                        } else if dx < 5 && abs(dy) < 5 {
-                            // Effectively a tap
-                            dismissExpanded()
-                        } else {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                dragOffset = 0
+        VStack(alignment: .leading, spacing: 10) {
+            // Drag handle — capsule sits in a thin row that extends edge-to-edge
+            // for tap detection. Total height ~10pt so we don't push the View
+            // Quest / Navigate buttons down into the underlying tab options.
+            Capsule()
+                .fill(Color.black)
+                .frame(width: 50, height: 4)
+                .frame(maxWidth: .infinity, minHeight: 10, maxHeight: 10)
+                .padding(.horizontal, -12)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            if value.translation.height > 0 {
+                                dragOffset = value.translation.height
                             }
                         }
-                    }
-            )
+                        .onEnded { value in
+                            let dx = abs(value.translation.width)
+                            let dy = value.translation.height
+                            if dy > 50 {
+                                dismissExpanded()
+                            } else if dx < 5 && abs(dy) < 5 {
+                                dismissExpanded()
+                            } else {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    dragOffset = 0
+                                }
+                            }
+                        }
+                )
 
             // Full-width photo banner with title + address overlay
             ZStack(alignment: .bottomLeading) {
@@ -552,10 +549,11 @@ struct ContentView: View {
         }
         .onAppear {
             UITabBar.appearance().isHidden = true
-            // Prefetch leaderboard data so the first tap on the Standings tab
-            // doesn't trigger a fresh Firestore query mid-tab-transition. The
-            // singleton's first access happens here, on root view appearance.
-            LeaderboardViewModel.shared.fetchLeaderboard()
+            // Prefetch leaderboard once at app launch so the first Standings
+            // tap doesn't kick off Firestore work mid-tab-transition.
+            // Idempotent — repeat onAppear calls (e.g. after sheet dismiss)
+            // do nothing.
+            LeaderboardViewModel.shared.prefetchIfNeeded()
         }
     }
 

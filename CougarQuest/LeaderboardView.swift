@@ -213,7 +213,10 @@ private struct RankingsList: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        VStack(spacing: 10) {
+        // LazyVStack so 200+ rows aren't all materialized at once — only
+        // the visible (and just-off-screen) rows render their AdaptiveGlass
+        // backgrounds, which are GPU-expensive at scale.
+        LazyVStack(spacing: 10) {
             ForEach(Array(users.enumerated()), id: \.element.id) { index, user in
                 RankingRow(
                     rank: index + 1,
@@ -322,6 +325,15 @@ class LeaderboardViewModel: ObservableObject {
 
     private let db = Firestore.firestore()
     private var currentUID: String? { Auth.auth().currentUser?.uid }
+    private var hasPrefetched = false
+
+    /// Fire-and-forget prefetch from app launch; no-op after first call.
+    /// Use `fetchLeaderboard()` for explicit refreshes (pull-to-refresh).
+    func prefetchIfNeeded() {
+        guard !hasPrefetched else { return }
+        hasPrefetched = true
+        fetchLeaderboard()
+    }
 
     var currentUserEntry: LeaderboardUser? {
         guard let uid = currentUID else { return nil }
