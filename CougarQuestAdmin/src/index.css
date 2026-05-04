@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 20% 97%;            /* #F2F2F7 iOS systemGray6 */
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --primary: 217 100% 36%;              /* Cougar Blue #0047BA */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 10% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 217 100% 96%;
+    --accent-foreground: 217 100% 36%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 217 100% 36%;
+    --radius: 0.875rem;
+  }
+
+  .dark {
+    --background: 240 8% 5%;
+    --foreground: 240 5% 96%;
+    --card: 240 6% 9%;
+    --card-foreground: 240 5% 96%;
+    --primary: 217 100% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 14%;
+    --secondary-foreground: 240 5% 96%;
+    --muted: 240 5% 14%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 217 70% 18%;
+    --accent-foreground: 217 100% 80%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 217 100% 56%;
+  }
+
+  * { border-color: hsl(var(--border)); }
+  html, body, #root { height: 100%; }
+  body {
+    @apply text-foreground font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    /* Apple-style gradient mesh — gives liquid glass real content to refract */
+    background-color: #EEF1F7;
+    background-image:
+      radial-gradient(ellipse 70% 60% at 90% 0%,    rgba(255, 196, 64,  0.55) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 60% at 100% 30%,  rgba(255, 99, 132,  0.40) 0%, transparent 55%),
+      radial-gradient(ellipse 90% 70% at 0% 0%,     rgba(0,   71, 186,  0.55) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 70% at 30% 100%,  rgba(110, 144, 220, 0.45) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 60% at 100% 100%, rgba(0,   71, 186,  0.30) 0%, transparent 60%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .glass {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+  .dark .glass {
+    background: rgba(28, 28, 30, 0.65);
+  }
+}
