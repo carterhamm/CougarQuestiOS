@@ -47,7 +47,12 @@ struct HomeView: View {
             scrollContent
                 .ignoresSafeArea(edges: .top)
                 .navigationDestination(for: String.self) { id in
-                    if let quest = quests.first(where: { $0.id == id }) {
+                    // Resolve the quest from the local list first; fall back to
+                    // morphState.quest so deep-linked quests (which may not be in
+                    // `quests` yet) still render.
+                    let resolved = quests.first(where: { $0.id == id })
+                        ?? (morphState.quest?.id == id ? morphState.quest : nil)
+                    if let quest = resolved {
                         if #available(iOS 18, *) {
                             QuestView(quest: quest, isQuestOpen: .constant(true))
                                 .navigationTransition(.zoom(sourceID: id, in: namespace))
@@ -66,6 +71,16 @@ struct HomeView: View {
             if newId == nil && !path.isEmpty {
                 path.removeAll()
             }
+        }
+        // Universal-link hand-off: ContentView fetches the quest by id and
+        // signals here. We push onto the NavigationStack so the user lands
+        // in full QuestView, not the QuestsView sheet.
+        .onReceive(DeepLinkState.shared.$pushOnHomeQuestId.compactMap { $0 }) { id in
+            print("🔗 HomeView pushing deep-linked quest id=\(id)")
+            if !path.contains(id) {
+                path.append(id)
+            }
+            DeepLinkState.shared.pushOnHomeQuestId = nil
         }
     }
 

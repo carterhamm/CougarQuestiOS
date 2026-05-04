@@ -19,6 +19,11 @@ import Kingfisher
 /// `pendingQuestId` and opens the matching quest.
 final class DeepLinkState: ObservableObject {
     static let shared = DeepLinkState()
+    /// Set by ContentView after fetching the quest by id.
+    /// HomeView observes this and pushes onto its NavigationStack so the
+    /// deep-linked quest opens as a full QuestView (not a sheet overlay).
+    @Published var pushOnHomeQuestId: String? = nil
+    /// Internal: id parsed from the URL but not yet handled by ContentView.
     @Published var pendingQuestId: String? = nil
     private init() {}
 
@@ -417,14 +422,14 @@ struct FloatingTabBar: View {
             // the bar's outer glass.
             Text(quest.description)
                 .font(.subheadline)
-                .foregroundColor(.black)
+                .foregroundColor(.white)
                 .lineLimit(5)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .adaptiveGlassEffectTinted(
-                    color: Color.white.opacity(0.55),
+                    color: Color.black.opacity(0.45),
                     in: RoundedRectangle(cornerRadius: 14)
                 )
                 .padding(.horizontal, 16)
@@ -484,31 +489,59 @@ struct FloatingTabBar: View {
 
     @ViewBuilder
     private func photoBanner(quest: Quest, isCompleted: Bool) -> some View {
+        let bannerHeight: CGFloat = 170
         ZStack(alignment: .bottom) {
-            // Photo / fallback gray
+            // Photo / fallback gray. Slightly translucent so the bar's
+            // CougarBlue tint bleeds through and the description card
+            // below feels visually integrated.
             if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
                 KFImage(url)
                     .resizable()
                     .scaledToFill()
                     .frame(maxWidth: .infinity)
-                    .frame(height: 130)
+                    .frame(height: bannerHeight)
                     .clipped()
+                    .opacity(0.82)
             } else {
                 Color.gray.opacity(0.3)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 130)
+                    .frame(height: bannerHeight)
             }
 
-            // Gradient for legibility under the title/address
+            // Vignette: darkens top + left + right edges, leaves bottom
+            // clear (the bottom already has its own gradient for title legibility).
+            ZStack {
+                LinearGradient(
+                    colors: [Color.black.opacity(0.35), .clear],
+                    startPoint: .top,
+                    endPoint: UnitPoint(x: 0.5, y: 0.45)
+                )
+                HStack(spacing: 0) {
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.30), .clear],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: 70)
+                    Spacer()
+                    LinearGradient(
+                        colors: [.clear, Color.black.opacity(0.30)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: 70)
+                }
+            }
+            .frame(height: bannerHeight)
+            .allowsHitTesting(false)
+
+            // Bottom gradient for title/address legibility
             LinearGradient(
                 colors: [Color.black.opacity(0.7), Color.clear],
                 startPoint: .bottom,
                 endPoint: .center
             )
-            .frame(height: 130)
+            .frame(height: bannerHeight)
             .allowsHitTesting(false)
 
-            // No visual drag handle — the photo IS the gesture target.
             // Title + address (left) and completion badge (right)
             HStack(alignment: .bottom, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -531,7 +564,7 @@ struct FloatingTabBar: View {
             .padding(.bottom, 12)
             .allowsHitTesting(false)
         }
-        .frame(height: 130)
+        .frame(height: bannerHeight)
     }
 
     @ViewBuilder
@@ -599,10 +632,13 @@ struct ContentView: View {
                 return
             }
             DispatchQueue.main.async {
-                print("🔗 routing to quest sheet for \(quest.title)")
-                selectedTab = .quests
+                print("🔗 routing to HomeView NavStack for \(quest.title)")
+                // Open in full QuestView via HomeView's NavigationStack
+                // (not the sheet on QuestsView) — deep links from outside
+                // the app should land on the immersive view, not a card.
+                selectedTab = .home
                 morphState.quest = quest
-                sheetQuest = quest
+                deepLink.pushOnHomeQuestId = id
                 deepLink.pendingQuestId = nil
             }
         }
@@ -851,17 +887,14 @@ struct QuestSheetView: View {
                     requestCameraThenPresent()
                 }
             )
-            // Match the main FloatingTabBar's vertical position EXACTLY.
-            // The trick is that the sheet's content respects safe area while
-            // the main bar's host (mainContent.overlay(...)) extends through
-            // it. We compensate by having the ZStack ignore the bottom safe
-            // area below — then the same padding+offset math lands at the
-            // same screen coordinates.
+            // Position relative to the sheet's safe area (matches what the
+            // user perceives as "where the tab bar usually is"). Earlier
+            // attempts ignored the safe area and applied the main bar's
+            // .offset(y: 26), which pushed the bar 16pt off-screen below
+            // the home indicator.
             .padding(.horizontal, 20)
-            .padding(.bottom, sheetSafeAreaBottom * 0.3)
-            .offset(y: 26)
+            .padding(.bottom, 6)
         }
-        .ignoresSafeArea(edges: .bottom)
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(
                 source: imagePickerSource == .camera ? .camera : .library,
