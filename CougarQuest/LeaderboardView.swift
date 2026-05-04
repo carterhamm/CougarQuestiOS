@@ -25,13 +25,6 @@ struct LeaderboardView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
-                    Text("Leaderboard")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal)
-                        .padding(.top, 44)
-
                     if viewModel.users.isEmpty {
                         ProgressView()
                             .padding(.top, 60)
@@ -58,7 +51,8 @@ struct LeaderboardView: View {
             }
             .refreshable { viewModel.fetchLeaderboard() }
         }
-        .navigationBarHidden(true)
+        .navigationTitle("Leaderboard")
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear { viewModel.fetchLeaderboard() }
     }
 }

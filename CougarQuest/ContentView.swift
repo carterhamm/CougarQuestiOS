@@ -227,13 +227,7 @@ struct FloatingTabBar: View {
                             Text(tab.title)
                                 .font(.system(size: 10))
                         }
-                        .foregroundColor(
-                            selectedTab == tab
-                                ? .white
-                                : (selectedTab == .home && !morphState.completedQuestTitles.isEmpty
-                                    ? Color.cougarBlue
-                                    : .primary)
-                        )
+                        .foregroundColor(selectedTab == tab ? .white : .primary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 68)
                         .contentShape(Rectangle())
@@ -462,14 +456,23 @@ struct FloatingTabBar: View {
             // the bar's outer glass.
             Text(quest.description)
                 .font(.subheadline)
-                .foregroundColor(.white)
+                .foregroundColor(Color(UIColor { trait in
+                    trait.userInterfaceStyle == .dark ? .white : .black
+                }))
                 .lineLimit(5)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .adaptiveGlassEffectTinted(
-                    color: Color.black.opacity(0.45),
+                    // Light mode: lighter near-white tint so the card pops
+                    // against the photo banner. Dark mode: keep the darker
+                    // black tint we had.
+                    color: Color(UIColor { trait in
+                        trait.userInterfaceStyle == .dark
+                            ? UIColor.black.withAlphaComponent(0.45)
+                            : UIColor.white.withAlphaComponent(0.65)
+                    }),
                     in: RoundedRectangle(cornerRadius: 14)
                 )
                 .padding(.horizontal, 16)
@@ -492,15 +495,22 @@ struct FloatingTabBar: View {
                     Text("View Quest")
                         .font(.callout)
                         .fontWeight(.semibold)
-                        .foregroundColor(.cougarBlue)
+                        // Light mode: black text (more contrast on the
+                        // lighter pill). Dark mode: keep CougarBlue.
+                        .foregroundColor(Color(UIColor { trait in
+                            trait.userInterfaceStyle == .dark
+                                ? (UIColor(named: "CougarBlue") ?? .systemBlue)
+                                : .black
+                        }))
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
-                        // Light mode → subtle blue tint; dark mode → near-white.
+                        // Light mode: near-white glass tint (lighter than
+                        // before). Dark mode: white-ish glass.
                         .adaptiveGlassEffectTinted(
                             color: Color(UIColor { trait in
                                 trait.userInterfaceStyle == .dark
                                     ? UIColor.white.withAlphaComponent(0.5)
-                                    : (UIColor(named: "CougarBlue") ?? .systemBlue).withAlphaComponent(0.18)
+                                    : UIColor.white.withAlphaComponent(0.7)
                             }),
                             in: RoundedRectangle(cornerRadius: 22)
                         )

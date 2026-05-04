@@ -91,29 +91,32 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     // MARK: Hero Section
                     VStack(spacing: 0) {
-                        // Mirror of the top 25% of the hero image (100pt),
-                        // flipped vertically so the colors flow into the
-                        // hero photo from above.
-                        Image("MarriottCenterHome")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: UIScreen.main.bounds.width, height: 400)
-                            .clipped()
-                            .frame(width: UIScreen.main.bounds.width, height: 100, alignment: .top)
-                            .clipped()
-                            .scaleEffect(y: -1)
-                            // Dark scrim so the area reads as a near-black
-                            // bar rather than a sharp mirrored strip.
-                            .overlay(
-                                LinearGradient(
-                                    gradient: Gradient(stops: [
-                                        .init(color: Color.black.opacity(0.55), location: 0.0),
-                                        .init(color: Color.black.opacity(0.0),  location: 1.0)
-                                    ]),
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
+                        // Mirror of the top 25% of the hero image (100pt).
+                        // Image and gradient are siblings in a ZStack so the
+                        // gradient isn't flipped along with the image
+                        // (.scaleEffect on the image was flipping its
+                        // .overlay too, hiding the dark scrim).
+                        ZStack {
+                            Image("MarriottCenterHome")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: UIScreen.main.bounds.width, height: 400)
+                                .clipped()
+                                .frame(width: UIScreen.main.bounds.width, height: 100, alignment: .top)
+                                .clipped()
+                                .scaleEffect(y: -1)
+
+                            LinearGradient(
+                                gradient: Gradient(stops: [
+                                    .init(color: Color.black.opacity(0.85), location: 0.0),
+                                    .init(color: Color.black.opacity(0.0),  location: 1.0)
+                                ]),
+                                startPoint: .top,
+                                endPoint: .bottom
                             )
+                        }
+                        .frame(width: UIScreen.main.bounds.width, height: 100)
+                        .clipped()
 
                         ZStack(alignment: .bottomLeading) {
                             Image("MarriottCenterHome")
@@ -181,7 +184,17 @@ struct HomeView: View {
                     .ignoresSafeArea(edges: .top)
                     
                     // MARK: Team Progress Card
-                    if !isLoading && !visibleQuests.isEmpty {
+                    if isLoading {
+                        // Skeleton version — shows the card shape while
+                        // we wait for the quest counts to load.
+                        TeamProgressCard(
+                            profileVM: profileVM,
+                            completedCount: 0,
+                            totalCount: 0
+                        )
+                        .padding(.horizontal)
+                        .redacted(reason: .placeholder)
+                    } else if !visibleQuests.isEmpty {
                         Button {
                             // Quick scroll — feels responsive (was 0.5s, sluggish).
                             withAnimation(.easeOut(duration: 0.25)) {
