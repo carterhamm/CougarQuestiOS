@@ -9,6 +9,7 @@ import SwiftUI
 import UIKit
 import AVFoundation
 import Combine
+import MapKit
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
@@ -491,9 +492,10 @@ struct FloatingTabBar: View {
     private func photoBanner(quest: Quest, isCompleted: Bool) -> some View {
         let bannerHeight: CGFloat = 170
         ZStack(alignment: .bottom) {
-            // Photo / fallback gray. Slightly translucent so the bar's
-            // CougarBlue tint bleeds through and the description card
-            // below feels visually integrated.
+            // Photo / fallback gray. Aggressively translucent + a glass
+            // overlay refracts the photo so it visually merges with the
+            // bar's outer Liquid Glass — the user sees the underlying map
+            // refraction THROUGH the photo rather than the photo blocking it.
             if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
                 KFImage(url)
                     .resizable()
@@ -501,7 +503,14 @@ struct FloatingTabBar: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: bannerHeight)
                     .clipped()
-                    .opacity(0.82)
+                    .opacity(0.55)
+                    .overlay(
+                        // Glass surface on top → refracts the photo + the
+                        // underlying map tiles together as one layer.
+                        Color.clear
+                            .adaptiveGlassEffect(in: Rectangle())
+                            .allowsHitTesting(false)
+                    )
             } else {
                 Color.gray.opacity(0.3)
                     .frame(maxWidth: .infinity)
@@ -579,7 +588,7 @@ struct FloatingTabBar: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(
-            Capsule().fill(Color.green.opacity(0.9))
+            Capsule().fill(Color.cougarBlue.opacity(0.9))
         )
     }
 }
@@ -762,8 +771,25 @@ struct ContentView: View {
         .animation(islandAnimation, value: selectedTab == .quests && selectedQuest != nil)
     }
 
+    /// Coordinate region the QuestsView Map will eventually use. Pre-rendering
+    /// it via a 1×1pt invisible Map at app launch warms MapKit's tile cache so
+    /// the first navigation to QuestsView doesn't flash + load tiles in mid-view.
+    private var mapPrewarmRegion: MKCoordinateRegion {
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 40.2529, longitude: -111.6498),
+            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+        )
+    }
+
     var body: some View {
         mainContent
+            .background(
+                // Invisible Map that triggers MapKit tile loading at launch.
+                Map(coordinateRegion: .constant(mapPrewarmRegion))
+                    .frame(width: 1, height: 1)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+            )
             .overlay(bottomOverlay, alignment: .bottom)
             .sheet(item: $sheetQuest, onDismiss: {
                 // If user swipes the sheet down (rather than tapping X),

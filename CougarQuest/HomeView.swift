@@ -86,6 +86,7 @@ struct HomeView: View {
 
     @ViewBuilder
     private var scrollContent: some View {
+        ScrollViewReader { scrollProxy in
         ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     // MARK: Hero Section
@@ -105,7 +106,10 @@ struct HomeView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.white)
                             if greeting.isEmpty {
-                                Text(" ")
+                                // Wider placeholder so the skeleton isn't a
+                                // sliver — visible width while we wait for
+                                // the real greeting to arrive.
+                                Text("Welcome back, friend")
                                     .font(.title)
                                     .fontWeight(.bold)
                                     .redacted(reason: .placeholder)
@@ -124,11 +128,20 @@ struct HomeView: View {
                     
                     // MARK: Team Progress Card
                     if !isLoading && !visibleQuests.isEmpty {
-                        TeamProgressCard(
-                            profileVM: profileVM,
-                            completedCount: completedQuestTitles.count,
-                            totalCount: visibleQuests.count
-                        )
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                scrollProxy.scrollTo("completed-section", anchor: .top)
+                            }
+                            let g = UIImpactFeedbackGenerator(style: .light)
+                            g.impactOccurred()
+                        } label: {
+                            TeamProgressCard(
+                                profileVM: profileVM,
+                                completedCount: completedQuestTitles.count,
+                                totalCount: visibleQuests.count
+                            )
+                        }
+                        .buttonStyle(.plain)
                         .padding(.horizontal)
                     }
 
@@ -161,31 +174,34 @@ struct HomeView: View {
                     }
                     
                     // MARK: Completed Quests Section
-                    if isLoading {
-                        Text("Completed Quests")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .padding(.horizontal)
-                            .redacted(reason: .placeholder)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                ForEach(0..<3, id: \.self) { _ in
-                                    Color.gray.opacity(0.3)
-                                        .frame(width: 150, height: 150)
-                                        .cornerRadius(20)
-                                        .redacted(reason: .placeholder)
+                    Group {
+                        if isLoading {
+                            Text("Completed Quests")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+                                .redacted(reason: .placeholder)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(0..<3, id: \.self) { _ in
+                                        Color.gray.opacity(0.3)
+                                            .frame(width: 150, height: 150)
+                                            .cornerRadius(20)
+                                            .redacted(reason: .placeholder)
+                                    }
                                 }
+                                .padding(.horizontal)
                             }
-                            .padding(.horizontal)
+                        } else {
+                            CompletedSectionView(
+                                quests: completedQuestsList,
+                                namespace: namespace,
+                                path: $path
+                            )
+                            .environmentObject(profileVM)
                         }
-                    } else {
-                        CompletedSectionView(
-                            quests: completedQuestsList,
-                            namespace: namespace,
-                            path: $path
-                        )
-                        .environmentObject(profileVM)
                     }
+                    .id("completed-section")
                     
                     if !isLoading && forYouQuests.isEmpty && completedQuestsList.isEmpty {
                         VStack {
@@ -268,6 +284,7 @@ struct HomeView: View {
                 }
             }
         }
+        } // ScrollViewReader
     }
 
 }

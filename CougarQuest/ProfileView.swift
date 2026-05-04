@@ -85,14 +85,16 @@ struct ProfileView: View {
 
     private var heroCard: some View {
         VStack(spacing: 14) {
-            // Avatar
+            // Avatar — glass-tinted circle (matches the rest of the app's
+            // AdaptiveGlass language; less harsh than the previous solid
+            // border).
             ZStack {
-                Circle()
-                    .fill(Color.cougarBlue.opacity(0.15))
+                Color.clear
                     .frame(width: 88, height: 88)
-                Circle()
-                    .stroke(Color.cougarBlue.opacity(0.5), lineWidth: 2)
-                    .frame(width: 88, height: 88)
+                    .adaptiveGlassEffectTinted(
+                        color: Color.cougarBlue.opacity(0.18),
+                        in: Circle()
+                    )
                 Text(initials.isEmpty ? "?" : initials)
                     .font(.system(size: 32, weight: .black, design: .rounded))
                     .foregroundColor(.cougarBlue)
