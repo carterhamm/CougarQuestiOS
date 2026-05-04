@@ -30,14 +30,14 @@ struct AppIconOption: Identifiable, Hashable {
         previewAssetName: "AppIconPreview"
     )
 
-    static let vintage = AppIconOption(
-        id: "CougarQuestVintage",
-        assetName: "CougarQuestVintage",
-        displayName: "Vintage",
+    static let alternate = AppIconOption(
+        id: "CougarQuestVintageRoyal",
+        assetName: "CougarQuestVintageRoyal",
+        displayName: "Alternate",
         previewAssetName: "VintagePreview"
     )
 
-    static let all: [AppIconOption] = [.primary, .vintage]
+    static let all: [AppIconOption] = [.primary, .alternate]
 }
 
 @MainActor
