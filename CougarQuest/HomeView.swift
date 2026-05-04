@@ -90,18 +90,63 @@ struct HomeView: View {
         ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     // MARK: Hero Section
-                    ZStack(alignment: .bottomLeading) {
+                    VStack(spacing: 0) {
+                        // Mirror of the top 25% of the hero image (100pt),
+                        // flipped vertically so the colors flow into the
+                        // hero photo from above.
                         Image("MarriottCenterHome")
                             .resizable()
                             .scaledToFill()
                             .frame(width: UIScreen.main.bounds.width, height: 400)
                             .clipped()
-                        LinearGradient(
-                            gradient: Gradient(colors: [Color.black.opacity(1.1), Color.clear]),
-                            startPoint: .bottom,
-                            endPoint: .center
-                        )
-                        VStack(alignment: .leading, spacing: 8) {
+                            .frame(width: UIScreen.main.bounds.width, height: 100, alignment: .top)
+                            .clipped()
+                            .scaleEffect(y: -1)
+                            // Dark scrim so the area reads as a near-black
+                            // bar rather than a sharp mirrored strip.
+                            .overlay(
+                                LinearGradient(
+                                    gradient: Gradient(stops: [
+                                        .init(color: Color.black.opacity(0.55), location: 0.0),
+                                        .init(color: Color.black.opacity(0.0),  location: 1.0)
+                                    ]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+
+                        ZStack(alignment: .bottomLeading) {
+                            Image("MarriottCenterHome")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: UIScreen.main.bounds.width, height: 400)
+                                .clipped()
+                                // Same soft fade overlay as QuestView's header,
+                                // tinted near-black for HomeView's heavier hero.
+                                .overlay(
+                                    Image("MarriottCenterHome")
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: UIScreen.main.bounds.width, height: 400)
+                                        .clipped()
+                                        .colorMultiply(Color(white: 0.15))
+                                        .mask(
+                                            LinearGradient(
+                                                gradient: Gradient(stops: [
+                                                    .init(color: Color.white.opacity(0.55), location: 1.0),
+                                                    .init(color: Color.white.opacity(0),    location: 0.6)
+                                                ]),
+                                                startPoint: .bottom,
+                                                endPoint: .top
+                                            )
+                                        )
+                                )
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.black.opacity(1.1), Color.clear]),
+                                startPoint: .bottom,
+                                endPoint: .center
+                            )
+                            VStack(alignment: .leading, spacing: 8) {
                             Text("BYU Fathers and Sons")
                                 .font(.subheadline)
                                 .foregroundColor(.white)
@@ -122,8 +167,9 @@ struct HomeView: View {
                         }
                         .padding(.leading, 16)
                         .padding(.bottom, 16)
+                        }
+                        .frame(height: 400)
                     }
-                    .frame(height: 400)
                     .ignoresSafeArea(edges: .top)
                     
                     // MARK: Team Progress Card

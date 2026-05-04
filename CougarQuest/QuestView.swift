@@ -247,7 +247,7 @@ struct QuestView: View {
                 ZStack {
                     VStack(alignment: .leading, spacing: 20) {
                         VStack(spacing: 0) {
-                            // Mirror of the top 15% of the photo (54pt), flipped
+                            // Mirror of the top 25% of the photo (90pt), flipped
                             // vertically and placed above so the colors flow into
                             // the hero image edge-to-edge.
                             if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
@@ -258,7 +258,7 @@ struct QuestView: View {
                                     .scaledToFill()
                                     .frame(width: UIScreen.main.bounds.width, height: 360)
                                     .clipped()
-                                    .frame(width: UIScreen.main.bounds.width, height: 54, alignment: .top)
+                                    .frame(width: UIScreen.main.bounds.width, height: 90, alignment: .top)
                                     .clipped()
                                     .scaleEffect(y: -1)
                             }
