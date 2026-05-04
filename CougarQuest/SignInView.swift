@@ -146,61 +146,40 @@ struct SignInView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VStack(spacing: 20) {
-                    Spacer(minLength: 24)
+                VStack(spacing: 16) {
+                    Spacer(minLength: 60)
 
-                    // BYU Fathers and Sons logo — gives the splash a focal
-                    // point above the gradient text. Sized as a percent of
-                    // screen width so it scales across devices.
-                    Image("FathersandSonsLogo")
+                    // App icon as the splash logo — full-color rendered
+                    // BYU Fathers and Sons design (the AppIconPreview asset
+                    // I generated earlier is the same image as the home-
+                    // screen icon, just at a flat rasterized size).
+                    Image("AppIconPreview")
                         .resizable()
-                        .renderingMode(.template)
-                        .foregroundColor(.cougarBlue)
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: UIScreen.main.bounds.width * 0.45)
-                        .shadow(color: Color.cougarBlue.opacity(0.25), radius: 20, x: 0, y: 8)
+                        .frame(width: 120, height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                        )
+                        .shadow(color: Color.cougarBlue.opacity(0.25), radius: 22, x: 0, y: 10)
 
-                    GeometryReader { geometry in
-                        VStack {
-                            HStack {
-                                Spacer()
-                                Text("Welcome to")
-                                    .font(.system(size: geometry.size.width * 0.1, weight: .bold))
-                                    .foregroundColor(.clear)
-                                    .overlay(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [Color.blue, Color.cyan]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .mask(
-                                        Text("Welcome to")
-                                            .font(.system(size: geometry.size.width * 0.1, weight: .bold))
-                                    )
-                                Spacer()
-                            }
-                            HStack {
-                                Text("CougarQuest")
-                                    .font(.system(size: geometry.size.width * 0.15, weight: .bold))
-                                    .foregroundColor(.clear)
-                                    .overlay(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [Color.blue, Color.cyan]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .mask(
-                                        Text("CougarQuest")
-                                            .font(.system(size: geometry.size.width * 0.15, weight: .bold))
-                                    )
-                            }
-                        }
+                    VStack(spacing: 4) {
+                        Text("Welcome to")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+
+                        Text("CougarQuest")
+                            .font(.system(size: 42, weight: .black, design: .rounded))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Color.cougarBlue, Color.cyan],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
                     }
-                    .frame(height: UIScreen.main.bounds.width * 0.15)
-                    .padding(.horizontal, 30)
-                    .padding(.top, 4)
 
                     Text("BYU Fathers and Sons")
                         .font(.subheadline)

@@ -9,18 +9,6 @@
 			<key>CFBundleIconName</key>
 			<string>AppIcon</string>
 		</dict>
-		<key>CFBundleAlternateIcons</key>
-		<dict>
-			<key>Vintage</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Vintage60x60</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-		</dict>
 	</dict>
 	<key>CFBundleURLTypes</key>
 	<array>
