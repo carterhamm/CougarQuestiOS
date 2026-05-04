@@ -258,7 +258,8 @@ struct QuestView: View {
                                     .scaledToFill()
                                     .frame(width: UIScreen.main.bounds.width, height: 360)
                                     .clipped()
-                                    // Strong blur overlay on header image
+                                    // Soft fade overlay on the header (was full
+                                    // opacity, looked like a heavy "blur").
                                     .overlay(
                                         KFImage(url)
                                             .cancelOnDisappear(true)
@@ -270,7 +271,7 @@ struct QuestView: View {
                                             .mask(
                                                 LinearGradient(
                                                     gradient: Gradient(stops: [
-                                                        .init(color: Color.white.opacity(1), location: 1.0),
+                                                        .init(color: Color.white.opacity(0.45), location: 1.0),
                                                         .init(color: Color.white.opacity(0), location: 0.6)
                                                     ]),
                                                     startPoint: .bottom,

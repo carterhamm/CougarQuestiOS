@@ -68,15 +68,13 @@ struct ProfileView: View {
                 viewModel.load()
                 fetchPoints()
             }
-            .confirmationDialog(
-                "Log out of CougarQuest?",
-                isPresented: $showLogOutConfirm,
-                titleVisibility: .visible
-            ) {
+            .alert("Log out of CougarQuest?", isPresented: $showLogOutConfirm) {
+                Button("Cancel", role: .cancel) { }
                 Button("Log Out", role: .destructive) {
                     viewModel.signOut(authVM: authVM)
                 }
-                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("You'll need to sign back in to see your quests and points.")
             }
         }
     }

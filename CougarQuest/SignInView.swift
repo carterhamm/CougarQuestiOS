@@ -194,57 +194,56 @@ struct SignInView: View {
                             .multilineTextAlignment(.center)
                     }
                     
-                    Spacer()
-                        .frame(height: UIScreen.main.bounds.width * 0.80)
-                    
-                    // Phone
-                    NavigationLink(destination: RegisterView(skipPhoneStep: false)) {
-                        Label("Continue with Phone Number", systemImage: "phone.fill")
-                            .fontWeight(.bold)
-                            .padding()
+                    // Larger spacer pushes the auth buttons further down so
+                    // the "Welcome to CougarQuest" hero has more breathing
+                    // room above them.
+                    Spacer(minLength: 0)
+
+                    VStack(spacing: 12) {
+                        // Phone
+                        NavigationLink(destination: RegisterView(skipPhoneStep: false)) {
+                            Label("Continue with Phone Number", systemImage: "phone.fill")
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                        }
+                        .background(
+                            Capsule().fill(Color(.secondarySystemBackground))
+                        )
+                        .foregroundColor(.primary)
+
+                        // Apple
+                        Button {
+                            registerSkipPhoneStep = true
+                            performAppleSignIn()
+                        } label: {
+                            Label("Continue with Apple", systemImage: "applelogo")
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                        }
+                        .background(
+                            Capsule().fill(colorScheme == .dark ? Color.white : Color.black)
+                        )
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
+
+                        // Google
+                        Button {
+                            registerSkipPhoneStep = true
+                            performGoogleSignIn()
+                        } label: {
+                            Label("Continue with Google", systemImage: "globe")
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                        }
+                        .background(
+                            Capsule().fill(Color.cougarBlue)
+                        )
                     }
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(.secondarySystemBackground))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(colorScheme == .dark ? Color(UIColor.darkGray) : Color(UIColor.lightGray), lineWidth: 1)
-                            )
-                            .frame(width: UIScreen.main.bounds.width - 25)
-                    )
-                    .foregroundColor(.primary)
-                    
-                    // Apple
-                    Button {
-                        registerSkipPhoneStep = true
-                        performAppleSignIn()
-                    } label: {
-                        Label("Continue with Apple", systemImage: "applelogo")
-                            .fontWeight(.bold)
-                            .padding()
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(colorScheme == .dark ? Color.white : Color.black)
-                            .frame(width: UIScreen.main.bounds.width - 25)
-                    )
-                    .foregroundColor(colorScheme == .dark ? .black : .white)
-                    
-                    // Google
-                    Button {
-                        registerSkipPhoneStep = true
-                        performGoogleSignIn()
-                    } label: {
-                        Label("Continue with Google", systemImage: "globe")
-                            .fontWeight(.bold)
-                            .padding()
-                            .foregroundColor(.white)
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color.blue)
-                            .frame(width: UIScreen.main.bounds.width - 25)
-                    )
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 32)
                 }
                 
                 NavigationLink(

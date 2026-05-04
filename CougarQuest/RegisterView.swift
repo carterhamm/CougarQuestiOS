@@ -77,7 +77,11 @@ struct RegisterView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                        if skipPhoneStep {
+                        // On the first step (phone, or firstName when phone
+                        // is skipped) the back button dismisses the entire
+                        // Register flow — previously it was disabled there,
+                        // leaving Cancel as the only escape.
+                        if currentStep.rawValue <= (skipPhoneStep ? Step.firstName.rawValue : Step.phone.rawValue) {
                             presentationMode.wrappedValue.dismiss()
                         } else {
                             previousStep()
@@ -85,7 +89,6 @@ struct RegisterView: View {
                     }) {
                         Image(systemName: "chevron.left")
                     }
-                    .disabled(!skipPhoneStep && currentStep.rawValue <= Step.phone.rawValue)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { presentationMode.wrappedValue.dismiss() }) {
@@ -147,14 +150,13 @@ struct RegisterView: View {
             }) {
                 Text("Send Code")
                     .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
             }
+            .buttonStyle(.plain)
             .disabled(phoneNumber.filter { $0.isNumber }.count < 10)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.cougarBlue)
-            .foregroundColor(.white)
-            .cornerRadius(20)
-            .contentShape(RoundedRectangle(cornerRadius: 20))
         }
     }
 
@@ -177,14 +179,13 @@ struct RegisterView: View {
             }) {
                 Text("Verify Code")
                     .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
             }
+            .buttonStyle(.plain)
             .disabled(otpCode.count < 6)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.cougarBlue)
-            .foregroundColor(.white)
-            .cornerRadius(20)
-            .contentShape(RoundedRectangle(cornerRadius: 20))
         }
     }
 
@@ -208,14 +209,13 @@ struct RegisterView: View {
             }) {
                 Text("Continue")
                     .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
             }
+            .buttonStyle(.plain)
             .disabled(text.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.cougarBlue)
-            .foregroundColor(.white)
-            .cornerRadius(20)
-            .contentShape(RoundedRectangle(cornerRadius: 20))
         }
     }
 
@@ -266,14 +266,13 @@ struct RegisterView: View {
             }) {
                 Text("Register")
                     .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
             }
+            .buttonStyle(.plain)
             .disabled(sons.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.isEmpty)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.cougarBlue)
-            .foregroundColor(.white)
-            .cornerRadius(20)
-            .contentShape(RoundedRectangle(cornerRadius: 20))
         }
     }
 
