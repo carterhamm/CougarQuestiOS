@@ -200,34 +200,38 @@ struct SignInView: View {
                     Spacer(minLength: 0)
 
                     VStack(spacing: 12) {
-                        // Phone
+                        // Phone — neutral glass tint
                         NavigationLink(destination: RegisterView(skipPhoneStep: false)) {
                             Label("Continue with Phone Number", systemImage: "phone.fill")
                                 .fontWeight(.bold)
+                                .foregroundColor(.primary)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
+                                .adaptiveGlassEffectTinted(
+                                    color: Color.gray.opacity(0.18),
+                                    in: Capsule()
+                                )
                         }
-                        .background(
-                            Capsule().fill(Color(.secondarySystemBackground))
-                        )
-                        .foregroundColor(.primary)
+                        .buttonStyle(.plain)
 
-                        // Apple
+                        // Apple — black/white inversion through glass
                         Button {
                             registerSkipPhoneStep = true
                             performAppleSignIn()
                         } label: {
                             Label("Continue with Apple", systemImage: "applelogo")
                                 .fontWeight(.bold)
+                                .foregroundColor(colorScheme == .dark ? .black : .white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
+                                .adaptiveGlassEffectTinted(
+                                    color: colorScheme == .dark ? Color.white : Color.black,
+                                    in: Capsule()
+                                )
                         }
-                        .background(
-                            Capsule().fill(colorScheme == .dark ? Color.white : Color.black)
-                        )
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .buttonStyle(.plain)
 
-                        // Google
+                        // Google — CougarBlue glass
                         Button {
                             registerSkipPhoneStep = true
                             performGoogleSignIn()
@@ -237,10 +241,12 @@ struct SignInView: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
+                                .adaptiveGlassEffectTinted(
+                                    color: Color.cougarBlue,
+                                    in: Capsule()
+                                )
                         }
-                        .background(
-                            Capsule().fill(Color.cougarBlue)
-                        )
+                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 32)

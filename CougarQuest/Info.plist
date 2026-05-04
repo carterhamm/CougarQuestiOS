@@ -13,8 +13,10 @@
 		<dict>
 			<key>Vintage</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>Vintage</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>VintageIcon</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
