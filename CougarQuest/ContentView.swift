@@ -101,13 +101,46 @@ struct FloatingTabBar: View {
         selectedTab == .home && (morphState.quest != nil || morphState.isComplete)
     }
 
+    /// Fixed layout regions inside the expanded bar (everything except the
+    /// description card). Used to compute the bar's total height so the
+    /// description can grow without overlapping View Quest / Navigate.
+    private static let expandedBarFixedHeight: CGFloat = {
+        // photoBanner(170) + topSpacing(10) + descriptionCardPaddingV(20)
+        // + bottomSpacing(10) + buttonsRow(44) + bottomPad(4)
+        // + reservedForTabRow(80) + photoOffset(80)
+        let photo: CGFloat = 170
+        let descPaddingV: CGFloat = 20
+        let buttons: CGFloat = 44
+        let stackSpacings: CGFloat = 10 * 2
+        let bottomChrome: CGFloat = 84  // bottomPad + reserved tab row + offset adjustment
+        return photo + descPaddingV + buttons + stackSpacings + bottomChrome
+    }()
+
+    /// Compute the actual rendered height of the description text at
+    /// subheadline font, capped at 5 lines so the bar can't grow forever.
+    private func descriptionHeight(for quest: Quest) -> CGFloat {
+        let screenWidth = UIScreen.main.bounds.width
+        // Outer FloatingTabBar padding (20*2) + description card horizontal
+        // padding (16*2) + inner card text padding (12*2)
+        let textWidth = max(120, screenWidth - 96)
+        let font = UIFont.preferredFont(forTextStyle: .subheadline)
+        let bounds = (quest.description as NSString).boundingRect(
+            with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font],
+            context: nil
+        )
+        // Cap at ~5 lines worth of text (matches .lineLimit(5) on the Text).
+        let maxHeight = font.lineHeight * 5 + 4
+        return min(ceil(bounds.height), maxHeight)
+    }
+
     private var capsuleHeight: CGFloat {
-        // Expanded bar is ~12% taller than before so the hero photo can
-        // breathe and the description can grow to multiple lines without
-        // shoving the View Quest / Navigate buttons.
-        (selectedTab == .quests && selectedQuest != nil)
-            ? UIScreen.main.bounds.height * 0.40
-            : 68
+        guard selectedTab == .quests, let quest = selectedQuest else { return 68 }
+        // Bar height = fixed chrome + actual description text height.
+        // Means the bar grows naturally with multi-line descriptions
+        // instead of pushing the buttons out of frame.
+        return Self.expandedBarFixedHeight + descriptionHeight(for: quest)
     }
 
     private func dismissExpanded() {
