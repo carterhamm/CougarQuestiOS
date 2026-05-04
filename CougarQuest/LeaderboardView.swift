@@ -130,11 +130,13 @@ private struct PodiumSection: View {
     }
 
     private func podiumColor(_ rank: Int) -> Color {
+        // Brand-consistent CougarBlue with descending intensity for 1st/2nd/3rd
+        // (gold/silver/bronze felt out of place against the rest of the app).
         switch rank {
-        case 1: return Color(red: 0.85, green: 0.65, blue: 0.13)
-        case 2: return Color(red: 0.72, green: 0.72, blue: 0.76)
-        case 3: return Color(red: 0.78, green: 0.50, blue: 0.24)
-        default: return .gray
+        case 1: return Color.cougarBlue
+        case 2: return Color.cougarBlue.opacity(0.75)
+        case 3: return Color.cougarBlue.opacity(0.55)
+        default: return Color.cougarBlue.opacity(0.4)
         }
     }
 
@@ -236,11 +238,14 @@ private struct RankingRow: View {
     @Environment(\.colorScheme) var colorScheme
 
     private var rankBadgeColor: Color {
+        // CougarBlue across all ranks; intensity drops slightly past top 3
+        // so the visual hierarchy still hints at the leader without using
+        // off-brand gold/silver/bronze colors.
         switch rank {
-        case 1: return Color(red: 0.85, green: 0.65, blue: 0.13)
-        case 2: return Color(red: 0.72, green: 0.72, blue: 0.76)
-        case 3: return Color(red: 0.78, green: 0.50, blue: 0.24)
-        default: return Color.cougarBlue
+        case 1: return Color.cougarBlue
+        case 2: return Color.cougarBlue.opacity(0.85)
+        case 3: return Color.cougarBlue.opacity(0.7)
+        default: return Color.cougarBlue.opacity(0.55)
         }
     }
 

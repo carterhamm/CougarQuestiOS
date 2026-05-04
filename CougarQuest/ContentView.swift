@@ -492,10 +492,8 @@ struct FloatingTabBar: View {
     private func photoBanner(quest: Quest, isCompleted: Bool) -> some View {
         let bannerHeight: CGFloat = 170
         ZStack(alignment: .bottom) {
-            // Photo / fallback gray. Aggressively translucent + a glass
-            // overlay refracts the photo so it visually merges with the
-            // bar's outer Liquid Glass — the user sees the underlying map
-            // refraction THROUGH the photo rather than the photo blocking it.
+            // Photo / fallback gray. Clean photo — overlaying glassEffect
+            // on a moving image creates cached/frozen distortion artifacts.
             if let url = URL(string: quest.photoURL), !quest.photoURL.isEmpty {
                 KFImage(url)
                     .resizable()
@@ -503,14 +501,6 @@ struct FloatingTabBar: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: bannerHeight)
                     .clipped()
-                    .opacity(0.55)
-                    .overlay(
-                        // Glass surface on top → refracts the photo + the
-                        // underlying map tiles together as one layer.
-                        Color.clear
-                            .adaptiveGlassEffect(in: Rectangle())
-                            .allowsHitTesting(false)
-                    )
             } else {
                 Color.gray.opacity(0.3)
                     .frame(maxWidth: .infinity)
@@ -587,9 +577,7 @@ struct FloatingTabBar: View {
         .foregroundColor(.white)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
-        .background(
-            Capsule().fill(Color.cougarBlue.opacity(0.9))
-        )
+        .adaptiveGlassEffectTinted(color: Color.cougarBlue.opacity(0.7), in: Capsule())
     }
 }
 

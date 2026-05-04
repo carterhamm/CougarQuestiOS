@@ -109,7 +109,7 @@ struct HomeView: View {
                                 // Wider placeholder so the skeleton isn't a
                                 // sliver — visible width while we wait for
                                 // the real greeting to arrive.
-                                Text("Welcome back, friend")
+                                Text("Welcome back")
                                     .font(.title)
                                     .fontWeight(.bold)
                                     .redacted(reason: .placeholder)
@@ -129,7 +129,8 @@ struct HomeView: View {
                     // MARK: Team Progress Card
                     if !isLoading && !visibleQuests.isEmpty {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.5)) {
+                            // Quick scroll — feels responsive (was 0.5s, sluggish).
+                            withAnimation(.easeOut(duration: 0.25)) {
                                 scrollProxy.scrollTo("completed-section", anchor: .top)
                             }
                             let g = UIImpactFeedbackGenerator(style: .light)
