@@ -227,7 +227,13 @@ struct FloatingTabBar: View {
                             Text(tab.title)
                                 .font(.system(size: 10))
                         }
-                        .foregroundColor(selectedTab == tab ? .white : .primary)
+                        .foregroundColor(
+                            selectedTab == tab
+                                ? .white
+                                : (selectedTab == .home && !morphState.completedQuestTitles.isEmpty
+                                    ? Color.cougarBlue
+                                    : .primary)
+                        )
                         .frame(maxWidth: .infinity)
                         .frame(height: 68)
                         .contentShape(Rectangle())

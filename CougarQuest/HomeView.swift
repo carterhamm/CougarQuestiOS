@@ -121,19 +121,20 @@ struct HomeView: View {
                                 .scaledToFill()
                                 .frame(width: UIScreen.main.bounds.width, height: 400)
                                 .clipped()
-                                // Same soft fade overlay as QuestView's header,
-                                // tinted near-black for HomeView's heavier hero.
+                                // Same soft fade overlay as QuestView's header —
+                                // duplicate of the image masked with a bottom-up
+                                // gradient. No colorMultiply (that darkened the
+                                // whole image earlier).
                                 .overlay(
                                     Image("MarriottCenterHome")
                                         .resizable()
                                         .scaledToFill()
                                         .frame(width: UIScreen.main.bounds.width, height: 400)
                                         .clipped()
-                                        .colorMultiply(Color(white: 0.15))
                                         .mask(
                                             LinearGradient(
                                                 gradient: Gradient(stops: [
-                                                    .init(color: Color.white.opacity(0.55), location: 1.0),
+                                                    .init(color: Color.white.opacity(0.45), location: 1.0),
                                                     .init(color: Color.white.opacity(0),    location: 0.6)
                                                 ]),
                                                 startPoint: .bottom,
@@ -141,8 +142,15 @@ struct HomeView: View {
                                             )
                                         )
                                 )
+                            // Dark gradient at the bottom (separate from the
+                            // image-overlay) so the title/greeting sit on a
+                            // visibly dark base. Only applies to the bottom
+                            // ~50% of the hero.
                             LinearGradient(
-                                gradient: Gradient(colors: [Color.black.opacity(1.1), Color.clear]),
+                                gradient: Gradient(colors: [
+                                    Color.black.opacity(0.75),
+                                    Color.clear
+                                ]),
                                 startPoint: .bottom,
                                 endPoint: .center
                             )
