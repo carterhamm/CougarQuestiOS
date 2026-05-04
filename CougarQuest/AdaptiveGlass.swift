@@ -30,18 +30,9 @@ extension View {
     @ViewBuilder
     func adaptiveGlassEffectTinted(color: Color, in shape: some Shape) -> some View {
         if #available(iOS 26.0, *) {
-            // .regular renders a visible material surface, then we layer a
-            // colored fill in the same shape behind it so the tint reads
-            // even when the parent is itself a glass card. Plain
-            // .clear.tint(color) was rendering effectively invisible when
-            // applied to clear/transparent content.
-            self
-                .background(shape.fill(color))
-                .glassEffect(.regular.tint(color), in: shape)
+            self.glassEffect(.clear.tint(color), in: shape)
         } else {
-            self
-                .background(shape.fill(color))
-                .background(shape.fill(.ultraThinMaterial))
+            self.background(shape.fill(color))
         }
     }
 }

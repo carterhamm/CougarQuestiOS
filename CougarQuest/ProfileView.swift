@@ -85,16 +85,18 @@ struct ProfileView: View {
 
     private var heroCard: some View {
         VStack(spacing: 14) {
-            // Avatar — glass-tinted circle (matches the rest of the app's
-            // AdaptiveGlass language; less harsh than the previous solid
-            // border).
+            // Avatar — material-backed circle with subtle CougarBlue tint
+            // on top. Using .ultraThinMaterial directly gives a visibly
+            // glass surface even when nested inside the heroCard's own
+            // glass background (where stacking glassEffect modifiers
+            // tends to cancel out).
             ZStack {
-                Color.clear
+                Circle()
+                    .fill(.ultraThinMaterial)
                     .frame(width: 88, height: 88)
-                    .adaptiveGlassEffectTinted(
-                        color: Color.cougarBlue.opacity(0.18),
-                        in: Circle()
-                    )
+                Circle()
+                    .fill(Color.cougarBlue.opacity(0.18))
+                    .frame(width: 88, height: 88)
                 Text(initials.isEmpty ? "?" : initials)
                     .font(.system(size: 32, weight: .black, design: .rounded))
                     .foregroundColor(.cougarBlue)
@@ -143,7 +145,15 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .adaptiveGlassEffectTinted(color: Color.cougarBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        // Material backing + subtle CougarBlue tint. Same reason as the
+        // avatar: visibly glass even when nested inside the heroCard.
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.cougarBlue.opacity(0.10))
+                .background(
+                    RoundedRectangle(cornerRadius: 14).fill(.ultraThinMaterial)
+                )
+        )
     }
 
     // MARK: - Team Card

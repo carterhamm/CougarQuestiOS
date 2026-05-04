@@ -227,6 +227,11 @@ struct QuestView: View {
                     .scaledToFill()
                     .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
                     .clipped()
+                    // Apple Music-style mirror: flip the background vertically
+                    // so the photo's bottom edge "reflects" upward, then blur
+                    // it heavily. The user sees the same colors flowing into
+                    // an out-of-focus reflection beneath the hero photo.
+                    .scaleEffect(y: -1)
                     .blur(radius: 50)
                     .overlay(
                         LinearGradient(
@@ -234,6 +239,7 @@ struct QuestView: View {
                             startPoint: .top,
                             endPoint: .bottom
                         )
+                        .opacity(0.55)
                     )
                     .ignoresSafeArea()
             }
@@ -394,10 +400,6 @@ struct QuestView: View {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
-                            .padding(8)
-                            .background(
-                                Circle().fill(Color.black.opacity(0.35))
-                            )
                     }
                 }
             }
