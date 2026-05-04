@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Vintage1024.png",
+      "filename" : "Vintage1024-alpha.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,6 +13,7 @@
           "value" : "dark"
         }
       ],
+      "filename" : "Vintage1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -24,6 +25,7 @@
           "value" : "tinted"
         }
       ],
+      "filename" : "Vintage1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
