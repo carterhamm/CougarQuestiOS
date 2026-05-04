@@ -406,6 +406,9 @@ struct ProfileView: View {
                 color: Color.red.opacity(0.10),
                 in: Capsule()
             )
+            // Make the entire pill (including the padded area, not just
+            // the icon + text) the tap target.
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }

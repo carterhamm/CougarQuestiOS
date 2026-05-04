@@ -147,6 +147,19 @@ struct SignInView: View {
         NavigationStack {
             ZStack {
                 VStack(spacing: 20) {
+                    Spacer(minLength: 24)
+
+                    // BYU Fathers and Sons logo — gives the splash a focal
+                    // point above the gradient text. Sized as a percent of
+                    // screen width so it scales across devices.
+                    Image("FathersandSonsLogo")
+                        .resizable()
+                        .renderingMode(.template)
+                        .foregroundColor(.cougarBlue)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: UIScreen.main.bounds.width * 0.45)
+                        .shadow(color: Color.cougarBlue.opacity(0.25), radius: 20, x: 0, y: 8)
+
                     GeometryReader { geometry in
                         VStack {
                             HStack {
@@ -186,7 +199,13 @@ struct SignInView: View {
                         }
                     }
                     .frame(height: UIScreen.main.bounds.width * 0.15)
-                    .padding(30)
+                    .padding(.horizontal, 30)
+                    .padding(.top, 4)
+
+                    Text("BYU Fathers and Sons")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
                     
                     if let error = errorMessage {
                         Text(error)
