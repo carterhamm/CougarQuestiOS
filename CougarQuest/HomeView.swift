@@ -91,7 +91,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     // MARK: Hero Section
                     VStack(spacing: 0) {
-                        // Mirror of the top 20% of the hero image (80pt).
+                        // Mirror of the top 12% of the hero image (48pt).
                         // Image and gradient are siblings in a ZStack so the
                         // gradient isn't flipped along with the image
                         // (.scaleEffect on the image was flipping its
@@ -102,7 +102,7 @@ struct HomeView: View {
                                 .scaledToFill()
                                 .frame(width: UIScreen.main.bounds.width, height: 400)
                                 .clipped()
-                                .frame(width: UIScreen.main.bounds.width, height: 80, alignment: .top)
+                                .frame(width: UIScreen.main.bounds.width, height: 48, alignment: .top)
                                 .clipped()
                                 .scaleEffect(y: -1)
 
@@ -115,7 +115,7 @@ struct HomeView: View {
                                 endPoint: .bottom
                             )
                         }
-                        .frame(width: UIScreen.main.bounds.width, height: 80)
+                        .frame(width: UIScreen.main.bounds.width, height: 48)
                         .clipped()
 
                         ZStack(alignment: .bottomLeading) {
