@@ -81,11 +81,11 @@ export default function TopBar({ title }: { title: string }) {
 
       <div className="flex justify-center min-w-0">
         {subview ? (
-          <h1 className="text-lg font-bold tracking-tight text-foreground text-center truncate max-w-3xl">
+          <h1 className="text-lg font-bold tracking-tight text-foreground text-center truncate max-w-5xl">
             {subview.title}
           </h1>
         ) : showSearch ? (
-          <div className="glass-tile flex items-center w-full max-w-3xl h-11 rounded-full bg-card/85 backdrop-blur px-4 transition focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
+          <div className="glass-tile flex items-center w-full max-w-5xl h-11 rounded-full bg-card/85 backdrop-blur px-4 transition focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
             <Search className="h-4 w-4 text-muted-foreground shrink-0" />
             <input
               ref={inputRef}

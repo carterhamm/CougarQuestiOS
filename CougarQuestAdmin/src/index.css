@@ -76,6 +76,14 @@
     animation-duration: 0.35s;
     animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
   }
+
+  /* Slow drift on the cinematic quest panels — alternates so each photo
+     breathes between two compositions. Per-panel delay is set inline so
+     the reel doesn't sync. */
+  @keyframes kenburns {
+    0%   { transform: scale(1.05) translate(-1.2%, -0.6%); }
+    100% { transform: scale(1.13) translate( 1.2%,  0.6%); }
+  }
 }
 
 @layer components {

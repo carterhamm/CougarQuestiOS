@@ -1,10 +1,20 @@
-import { useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Image as ImageIcon } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
+import { Plus, Image as ImageIcon, ArrowUpRight } from 'lucide-react'
 import type { Quest } from '@/lib/types'
 import { useQuests, useUsers } from '@/lib/queries'
-import { Button } from '@/components/ui/Button'
+
+/* Cinematic horizontal reel of quest panels.
+   Each quest is a tall photo column with the title overlaid; the entire
+   archive scrolls horizontally with scroll-snap centering. The currently
+   centered panel is fully bright and gets a cougar bar across the top
+   (animated with motion's layoutId so it slides between panels). The
+   rest dim and de-saturate. A live timeline at the bottom tracks
+   scroll progress in real time and the centered panel index. */
+
+const PANEL_W = 400
+const PANEL_GAP = 20
 
 export default function QuestsPage() {
   const navigate = useNavigate()
@@ -26,98 +36,269 @@ export default function QuestsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return quests
-    return quests.filter(
-      (x) =>
-        x.title.toLowerCase().includes(q) ||
-        x.address.toLowerCase().includes(q) ||
-        x.description.toLowerCase().includes(q),
+    return quests.filter((x) =>
+      x.title.toLowerCase().includes(q) ||
+      x.address.toLowerCase().includes(q) ||
+      x.description.toLowerCase().includes(q),
     )
   }, [quests, search])
 
+  const reelRef = useRef<HTMLDivElement>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [scrollProgress, setScrollProgress] = useState(0)
+
+  // Detect which panel is currently centered → "active" treatment.
+  useEffect(() => {
+    const root = reelRef.current
+    if (!root || filtered.length === 0) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        let best: IntersectionObserverEntry | null = null
+        for (const e of entries) {
+          if (e.isIntersecting && (!best || e.intersectionRatio > best.intersectionRatio)) {
+            best = e
+          }
+        }
+        if (best) {
+          const id = best.target.getAttribute('data-quest-id')
+          if (id) setActiveId(id)
+        }
+      },
+      { root, threshold: [0.55, 0.8, 1] },
+    )
+    root.querySelectorAll('[data-quest-id]').forEach((el) => obs.observe(el))
+    return () => obs.disconnect()
+  }, [filtered])
+
+  // Smoothly track horizontal scroll for the bottom timeline bar.
+  useEffect(() => {
+    const root = reelRef.current
+    if (!root) return
+    const onScroll = () => {
+      const max = root.scrollWidth - root.clientWidth
+      setScrollProgress(max > 0 ? root.scrollLeft / max : 0)
+    }
+    root.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => root.removeEventListener('scroll', onScroll)
+  }, [filtered])
+
+  // Arrow-key navigation through the reel — one panel per press.
+  useEffect(() => {
+    const root = reelRef.current
+    if (!root) return
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (document.activeElement as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.key === 'ArrowRight') {
+        root.scrollBy({ left: PANEL_W + PANEL_GAP, behavior: 'smooth' })
+        e.preventDefault()
+      } else if (e.key === 'ArrowLeft') {
+        root.scrollBy({ left: -(PANEL_W + PANEL_GAP), behavior: 'smooth' })
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const activeIndex = activeId ? filtered.findIndex((q) => q.id === activeId) : -1
+  const displayIndex = activeIndex >= 0 ? activeIndex : 0
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-      className="space-y-5"
-    >
-      <div className="flex items-center justify-end">
-        <Button onClick={() => navigate('/quests/new')}>
-          <Plus className="h-4 w-4" />
-          New quest
-        </Button>
-      </div>
+    <div className="space-y-10 pb-12">
+      <motion.header
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+        className="flex items-baseline justify-between"
+      >
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+            Quest archive
+          </div>
+          <div className="text-sm text-muted-foreground tabular mt-1">
+            {filtered.length} {filtered.length === 1 ? 'expedition' : 'expeditions'} across camp
+          </div>
+        </div>
+        <Link
+          to="/quests/new"
+          className="group text-[11px] font-bold uppercase tracking-[0.18em] text-cougar inline-flex items-center gap-1.5"
+        >
+          <Plus className="h-3.5 w-3.5 transition-transform group-hover:rotate-90" />
+          Provision new
+        </Link>
+      </motion.header>
 
       {isLoading ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">Loading…</div>
+        <div className="text-center py-24 text-sm text-muted-foreground">Scanning archive…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">
-          {search ? 'No quests match.' : 'No quests yet — add the first one.'}
+        <div className="text-center py-24 text-sm text-muted-foreground">
+          {search ? `No expeditions match "${search}".` : 'No quests yet — provision the first.'}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((q, i) => (
-            <QuestCard
-              key={q.id}
-              quest={q}
-              completions={completionsByTitle.get(q.title) ?? 0}
-              delay={Math.min(i, 8) * 0.04}
-              onClick={() => navigate(`/quests/${q.id}`)}
-            />
-          ))}
+        // -mx-8 + px-8 inside breaks out of AppShell's px-8 padding so the
+        // reel can bleed to the edges of the main area; scrollPaddingLeft
+        // keeps snap centers respecting the visual padding.
+        <div className="-mx-8">
+          <div
+            ref={reelRef}
+            className="overflow-x-auto scrollbar-hide pb-8"
+            style={{
+              scrollSnapType: 'x mandatory',
+              scrollPaddingLeft: '32px',
+              scrollPaddingRight: '32px',
+            }}
+          >
+            <div className="flex gap-5 px-8">
+              {filtered.map((q, i) => (
+                <QuestPanel
+                  key={q.id}
+                  quest={q}
+                  index={i}
+                  active={q.id === activeId}
+                  completions={completionsByTitle.get(q.title) ?? 0}
+                  onClick={() => navigate(`/quests/${q.id}`)}
+                />
+              ))}
+              <NewPanel onClick={() => navigate('/quests/new')} />
+            </div>
+          </div>
         </div>
       )}
-    </motion.div>
+
+      {filtered.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          className="flex items-center gap-5 border-t border-foreground/10 pt-6"
+        >
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/70 tabular shrink-0">
+            {String(displayIndex + 1).padStart(2, '0')} / {String(filtered.length).padStart(2, '0')}
+          </div>
+          <div className="h-px flex-1 bg-foreground/10 relative overflow-hidden">
+            <div
+              className="absolute inset-y-0 left-0 bg-cougar transition-[width] duration-150 ease-out"
+              style={{ width: `${scrollProgress * 100}%` }}
+            />
+          </div>
+          <div className="hidden md:block text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground shrink-0">
+            Scroll · ← →
+          </div>
+        </motion.div>
+      )}
+    </div>
   )
 }
 
-function QuestCard({
-  quest, completions, delay, onClick,
-}: {
+interface PanelProps {
   quest: Quest
+  index: number
+  active: boolean
   completions: number
-  delay: number
   onClick: () => void
-}) {
+}
+
+function QuestPanel({ quest, index, active, completions, onClick }: PanelProps) {
+  const number = String(index + 1).padStart(2, '0')
+  const code = quest.plusCode || `Q·${number}`
+
+  return (
+    <motion.button
+      type="button"
+      data-quest-id={quest.id}
+      onClick={onClick}
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        type: 'spring',
+        stiffness: 260,
+        damping: 28,
+        delay: Math.min(index, 6) * 0.04,
+      }}
+      className="group relative shrink-0 rounded-3xl overflow-hidden bg-foreground/5 text-left"
+      style={{ width: PANEL_W, height: 560, scrollSnapAlign: 'center' }}
+    >
+      {quest.photoURL ? (
+        <img
+          src={quest.photoURL}
+          alt={quest.title}
+          crossOrigin="anonymous"
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover transition-[filter] duration-700"
+          style={{
+            animation: `kenburns 28s ${(index * 1.7) % 14}s ease-in-out infinite alternate`,
+            filter: active ? 'brightness(1)' : 'brightness(0.55) saturate(0.85)',
+          }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-foreground/30">
+          <ImageIcon className="h-10 w-10" />
+        </div>
+      )}
+
+      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/55 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
+
+      <div className="absolute top-5 left-6 right-6 flex items-start justify-between text-white">
+        <span className="text-[44px] font-extralight tabular leading-none drop-shadow-md">
+          {number}
+        </span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/75 mt-2">
+          {code}
+        </span>
+      </div>
+
+      <div className="absolute bottom-0 inset-x-0 p-6 text-white">
+        <div className="text-[28px] font-black tracking-tight leading-[1.05] line-clamp-2 drop-shadow-md">
+          {quest.title || 'Untitled expedition'}
+        </div>
+        {quest.address && (
+          <div className="text-[12.5px] text-white/75 mt-2 line-clamp-1">
+            {quest.address}
+          </div>
+        )}
+        <div className="flex items-baseline justify-between gap-3 mt-5">
+          <div className="flex items-baseline gap-1.5 tabular">
+            <span className="text-2xl font-black drop-shadow">{completions}</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/65">
+              completions
+            </span>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/0 group-hover:text-white/85 transition-colors">
+            Open <ArrowUpRight className="h-3 w-3" />
+          </span>
+        </div>
+      </div>
+
+      {active && (
+        <motion.div
+          layoutId="quest-active-bar"
+          className="absolute top-0 inset-x-0 h-0.5 bg-cougar"
+          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+        />
+      )}
+    </motion.button>
+  )
+}
+
+function NewPanel({ onClick }: { onClick: () => void }) {
   return (
     <motion.button
       type="button"
       onClick={onClick}
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 28, delay }}
-      whileHover={{ y: -2 }}
-      className="group glass-tile rounded-3xl border bg-card text-left overflow-hidden transition-shadow hover:shadow-lg flex flex-col"
+      transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
+      className="group relative shrink-0 rounded-3xl border border-dashed border-foreground/15 hover:border-cougar/55 transition-colors flex flex-col items-center justify-center gap-3 text-foreground/45 hover:text-cougar"
+      style={{ width: PANEL_W, height: 560, scrollSnapAlign: 'center' }}
     >
-      <div
-        className="relative aspect-[16/10] w-full overflow-hidden bg-secondary [transform:translateZ(0)] [will-change:transform] [-webkit-mask-image:-webkit-radial-gradient(white,black)]"
-      >
-        {quest.photoURL ? (
-          <img
-            src={quest.photoURL}
-            alt={quest.title}
-            crossOrigin="anonymous"
-            loading="lazy"
-            decoding="async"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04] [backface-visibility:hidden]"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            <ImageIcon className="h-8 w-8" />
-          </div>
-        )}
-        <div className="absolute top-3 right-3 rounded-full bg-black/55 backdrop-blur text-white text-xs font-semibold px-2.5 py-1 tabular">
-          {completions}
-        </div>
-      </div>
-      <div className="p-4 space-y-1 flex-1">
-        <div className="font-semibold tracking-tight truncate">
-          {quest.title || <span className="text-muted-foreground italic">untitled</span>}
-        </div>
-        <div className="text-xs text-muted-foreground line-clamp-1">
-          {quest.address || quest.description || '—'}
-        </div>
+      <Plus className="h-10 w-10 transition-transform duration-300 group-hover:rotate-90" />
+      <div className="text-[11px] font-bold uppercase tracking-[0.22em]">
+        Provision a new expedition
       </div>
     </motion.button>
   )
