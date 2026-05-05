@@ -629,7 +629,6 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
         <div
           ref={menuRef}
           data-liquid-glass
-          className="glass-tile"
           style={{
             position: 'fixed',
             opacity: 0,
@@ -653,7 +652,6 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
       <button
         ref={pillRef}
         data-liquid-glass
-        className="glass-tile"
         onClick={open}
         style={{
           width: PILL_W,

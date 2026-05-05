@@ -46,12 +46,11 @@ export default function Sidebar() {
     backgroundColor: isActive
       ? (theme === 'dark' ? 'rgba(0, 71, 186, 0.22)' : 'rgba(0, 71, 186, 0.10)')
       : 'transparent',
-    // Active tab: cougar glow halo PLUS the glass-cougar rim (combined so the
-    // class-level box-shadow isn't overridden).
+    // Active tab: cougar glow halo only — the rim itself is class-driven.
     boxShadow: isActive
       ? theme === 'dark'
-        ? 'inset 0 0 0 0.84px rgb(130 175 255 / 0.7), 0 4px 12px rgba(0, 71, 186, 0.30)'
-        : 'inset 0 0 0 0.84px rgb(0 71 186 / 0.85), 0 4px 12px rgba(0, 71, 186, 0.22)'
+        ? '0 4px 12px rgba(0, 71, 186, 0.30)'
+        : '0 4px 12px rgba(0, 71, 186, 0.22)'
       : 'none',
     color: isActive
       ? (theme === 'dark' ? '#ffffff' : 'hsl(var(--primary))')
@@ -74,11 +73,9 @@ export default function Sidebar() {
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         border: '1px solid transparent',
-        // Drop shadow + inset cougar rim. Inline style wins over the class
-        // box-shadow, so combine them here.
         boxShadow: theme === 'dark'
-          ? 'inset 0 0 0 0.84px rgb(130 175 255 / 0.55), 0 8px 32px rgba(0, 0, 0, 0.5)'
-          : 'inset 0 0 0 0.84px rgb(0 71 186 / 0.65), 0 8px 32px rgba(0, 30, 80, 0.12)',
+          ? '0 8px 32px rgba(0, 0, 0, 0.5)'
+          : '0 8px 32px rgba(0, 30, 80, 0.12)',
         zIndex: 40,
       }}
       className="glass-tile glass-cougar hidden md:flex flex-col overflow-hidden"

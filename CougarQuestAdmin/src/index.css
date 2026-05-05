@@ -132,68 +132,50 @@
   html.dark .chip-success { background: rgb(20 83 45 / 0.45); color: rgb(187 247 208); }
   html.dark .chip-warn    { background: rgb(120 53 15 / 0.45); color: rgb(254 215 170); }
 
-  /* Glass element rim — UNIFORM 0.84px width everywhere, ALWAYS. The cursor
-     can only change OPACITY (which segments of the rim look brightest); it
-     can never change the geometry, never let the rim disappear at a corner.
+  /* Glass-tile rim — uniform 0.84px width, OPACITY-only variance. The rim is
+     PURELY cursor-driven: the segment of the perimeter facing the cursor is
+     100% opaque, and it fades smoothly to 0% on the segment facing away. No
+     base rim — when nothing is lit, you see no rim. The fade is opacity along
+     the perimeter; the geometric width is constant.
 
-     Two parts:
+     Light mode uses dark cougar-tinted rim color so it's visible on white
+     cards. Dark mode uses white. .glass-cougar swaps to a brighter cougar.
 
-     1) BASE rim (always-visible, captured by html2canvas)
-        Rendered as `box-shadow: inset 0 0 0 0.84px <rim-color>`. Solid color,
-        uniform width, uniform opacity. Drawn into the element's border-radius,
-        so corners are perfect. html2canvas supports inset box-shadow, so this
-        is the rim that survives into the glass-menu refraction.
-
-     2) CURSOR light (visual polish, NOT in capture)
-        Rendered as a `<span class="glass-rim" data-liquid-glass>` injected by
-        cursorGlow.ts as the first child of every .glass-tile. The span uses
-        the same padding+mask trick to draw a 0.84px ring on top of the base,
-        with a directional+proximity gradient driven by --cx/--cy/--ang.
-        `data-liquid-glass` is the html2canvas ignore-attribute, so this
-        overlay is excluded from the captured texture — solving the "lines
-        through the refraction" and "tiles don't show up behind glass menu"
-        problems.
-
-     Light mode uses dark cougar-tinted rim color so the rim is actually
-     visible on a white card. Dark mode uses white-tinted. */
+     The rim is rendered as a child <span class="glass-rim" data-liquid-glass>
+     auto-injected by cursorGlow into every .glass-tile that doesn't sit
+     inside a [data-liquid-glass] subtree (the glass menu opts out so its
+     refraction shader isn't visually competing with my rim). The
+     data-liquid-glass attribute also excludes the rim from html2canvas
+     captures, so refractions stay clean. */
 
   .glass-tile {
     --cx: 50%;
     --cy: 50%;
     --ang: 315deg;
-    --intensity: 0.65;
-    --rim-r: 0;     /* rim color RGB triplet — overridden per theme below */
+    --rim-r: 0;
     --rim-g: 30;
     --rim-b: 80;
     position: relative;
     isolation: isolate;
-    box-shadow: inset 0 0 0 0.84px rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0.55);
   }
   html.dark .glass-tile {
     --rim-r: 255;
     --rim-g: 255;
     --rim-b: 255;
-    box-shadow: inset 0 0 0 0.84px rgb(255 255 255 / 0.22);
   }
 
-  /* Cougar Blue variant — sidebar, active nav tab, anywhere brand-tinted. */
+  /* Cougar variant — sidebar root + active nav tab. */
   .glass-cougar {
     --rim-r: 0;
     --rim-g: 71;
     --rim-b: 186;
-    box-shadow: inset 0 0 0 0.84px rgb(0 71 186 / 0.65);
   }
   html.dark .glass-cougar {
     --rim-r: 130;
     --rim-g: 175;
     --rim-b: 255;
-    box-shadow: inset 0 0 0 0.84px rgb(130 175 255 / 0.55);
   }
 
-  /* Cursor-light overlay — auto-injected by cursorGlow as the first child of
-     every .glass-tile. Same uniform 0.84px ring; only OPACITY of segments
-     varies along the perimeter. Never goes to 0 (so the rim never appears to
-     "vanish" or change width). data-liquid-glass excludes it from capture. */
   .glass-rim {
     position: absolute;
     inset: 0;
@@ -205,24 +187,23 @@
     -webkit-mask-composite: xor;
             mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
             mask-composite: exclude;
-    /* Two stacked lights:
-         radial — proximity hotspot, brightest patch of rim closest to cursor
-         conic  — directional sun, hemisphere facing cursor reads brighter
-       Both use the SAME rim color (--rim-r/g/b), so the overlay deepens the
-       base rim near the cursor and barely affects it on the far side. */
+    /* Two superposed lights — both fade to 0% on the side away from cursor.
+         radial — proximity hotspot under the cursor (only paints the patch
+                  of rim closest to the cursor; off-tile cursor → 0)
+         conic  — directional cone — 100% facing cursor (--ang), fades to
+                  0% at ±90° from cursor, fully 0% on the entire far half */
     background:
       radial-gradient(circle 360px at var(--cx) var(--cy),
-        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / calc(var(--intensity) * 0.95)) 0%,
-        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / calc(var(--intensity) * 0.55)) 14%,
-        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0) 60%
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 1.0)  0%,
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0.55) 14%,
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)    60%
       ),
       conic-gradient(
-        from calc(var(--ang) - 180deg),
-        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)                                  0deg,
-        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / calc(var(--intensity) * 0.30))     90deg,
-        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / calc(var(--intensity) * 0.85))    180deg,
-        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / calc(var(--intensity) * 0.30))    270deg,
-        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)                                360deg
+        from calc(var(--ang) - 90deg),
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)    0deg,
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 1.0)  90deg,
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)    180deg,
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)    360deg
       );
   }
 

@@ -96,6 +96,7 @@ function QuestCard({
           <img
             src={quest.photoURL}
             alt={quest.title}
+            crossOrigin="anonymous"
             loading="lazy"
             decoding="async"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04] [backface-visibility:hidden]"
