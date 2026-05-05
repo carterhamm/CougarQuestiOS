@@ -74,27 +74,27 @@ export default function LeaderboardPage() {
       </div>
 
       <BentoTile delay={0.18} hover={false} className="overflow-hidden p-0">
-        <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-3">
-          <div className="text-sm font-semibold tracking-tight">Full ranking</div>
+        <div className="flex items-baseline justify-between gap-3 px-8 pt-7 pb-5">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Full ranking
+            </div>
+            <div className="text-xs text-muted-foreground/70 tabular mt-0.5">
+              {users.length} {users.length === 1 ? 'team' : 'teams'}
+            </div>
+          </div>
           <Button size="sm" variant="secondary" onClick={exportCsv} disabled={users.length === 0}>
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
         </div>
 
-        <div className="grid grid-cols-[64px_minmax(0,1fr)_96px_96px] items-center gap-4 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-b border-border/60">
-          <div>Rank</div>
-          <div>Team / Camper</div>
-          <div className="text-right">Completed</div>
-          <div className="text-right">Points</div>
-        </div>
-
         {isLoading && (
-          <div className="px-6 py-16 text-center text-sm text-muted-foreground">Loading…</div>
+          <div className="px-8 py-20 text-center text-sm text-muted-foreground">Loading…</div>
         )}
 
         {!isLoading && rest.length === 0 && (
-          <div className="px-6 py-16 text-center text-sm text-muted-foreground">
+          <div className="px-8 py-20 text-center text-sm text-muted-foreground">
             No campers ranked yet beyond the podium.
           </div>
         )}
@@ -105,14 +105,22 @@ export default function LeaderboardPage() {
               key={u.uid}
               type="button"
               onClick={() => navigate(`/campers/${u.uid}`)}
-              className="w-full text-left grid grid-cols-[64px_minmax(0,1fr)_96px_96px] items-center gap-4 px-6 py-3.5 border-b border-border/40 last:border-0 transition group hover:bg-cougar/[0.04]"
+              className="w-full text-left grid grid-cols-[56px_minmax(0,1fr)_auto_auto] items-center gap-6 px-8 py-5 transition group hover:bg-cougar/[0.04] focus:outline-none focus-visible:bg-cougar/[0.06]"
             >
-              <div className="text-sm tabular text-muted-foreground">{i + 4}</div>
-              <div className="text-sm font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
+              <div className="text-[26px] font-light tabular text-muted-foreground/40 leading-none">
+                {i + 4}
+              </div>
+              <div className="text-[15px] font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
                 {displayNameFor(u)}
               </div>
-              <div className="text-sm tabular text-right">{u.completedQuests?.length ?? 0}</div>
-              <div className="text-base tabular font-bold text-right text-cougar">{u.points ?? 0}</div>
+              <div className="flex items-baseline gap-1.5 tabular">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">Done</span>
+                <span className="text-sm font-semibold">{u.completedQuests?.length ?? 0}</span>
+              </div>
+              <div className="flex items-baseline gap-1.5 tabular min-w-[80px] justify-end">
+                <span className="text-2xl font-black text-cougar leading-none">{u.points ?? 0}</span>
+                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">pts</span>
+              </div>
             </button>
           ))}
         </div>

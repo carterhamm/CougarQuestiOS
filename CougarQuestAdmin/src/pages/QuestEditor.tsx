@@ -5,7 +5,7 @@ import {
   addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { ArrowLeft, Trash2, Image as ImageIcon } from 'lucide-react'
+import { Trash2, Image as ImageIcon } from 'lucide-react'
 import { motion } from 'motion/react'
 import { db, storage } from '@/lib/firebase'
 import type { Quest } from '@/lib/types'
@@ -13,6 +13,7 @@ import { useQuests } from '@/lib/queries'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Label } from '@/components/ui/Input'
 import { appleMapsUrlToPlusCode } from '@/lib/maps'
+import { useSubview } from '@/lib/subview'
 
 const blank: Quest = {
   id: '', title: '', address: '', description: '',
@@ -38,6 +39,13 @@ export default function QuestEditor() {
   useEffect(() => {
     if (!isNew && initialQuest.id) setForm(initialQuest)
   }, [isNew, initialQuest])
+
+  // Hand the TopBar a back-pill (left) + centered title (middle).
+  useSubview({
+    title: isNew ? 'New quest' : (form.title || 'Edit quest'),
+    backTo: '/quests',
+    backLabel: 'Quests',
+  })
 
   const save = useMutation({
     mutationFn: async () => {
@@ -94,40 +102,27 @@ export default function QuestEditor() {
       transition={{ type: 'spring', stiffness: 280, damping: 26 }}
       className="space-y-6 max-w-3xl mx-auto"
     >
-      <button
-        onClick={() => navigate('/quests')}
-        className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        All quests
-      </button>
-
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight truncate">
-          {isNew ? 'New quest' : form.title || 'Edit quest'}
-        </h1>
-        <div className="flex items-center gap-2 shrink-0">
-          {!isNew && (
-            <Button
-              variant="destructive"
-              size="md"
-              onClick={() => {
-                if (confirm(`Delete "${form.title}"? This cannot be undone.`)) remove.mutate()
-              }}
-              disabled={remove.isPending}
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
-          )}
+      <div className="flex items-center justify-end gap-2">
+        {!isNew && (
           <Button
+            variant="destructive"
             size="md"
-            onClick={() => save.mutate()}
-            disabled={save.isPending || !form.title.trim()}
+            onClick={() => {
+              if (confirm(`Delete "${form.title}"? This cannot be undone.`)) remove.mutate()
+            }}
+            disabled={remove.isPending}
           >
-            {save.isPending ? 'Saving…' : isNew ? 'Create quest' : 'Save changes'}
+            <Trash2 className="h-4 w-4" />
+            Delete
           </Button>
-        </div>
+        )}
+        <Button
+          size="md"
+          onClick={() => save.mutate()}
+          disabled={save.isPending || !form.title.trim()}
+        >
+          {save.isPending ? 'Saving…' : isNew ? 'Create quest' : 'Save changes'}
+        </Button>
       </div>
 
       {/* Photo */}

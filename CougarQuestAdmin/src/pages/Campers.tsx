@@ -30,29 +30,28 @@ export default function CampersPage() {
       className="space-y-5"
     >
       <BentoTile delay={0.05} hover={false} className="overflow-hidden p-0">
-        <div className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)_72px_84px_88px] items-center gap-4 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-b border-border/60">
-          <div>Camper</div>
-          <div>Contact</div>
-          <div className="text-right">Done</div>
-          <div className="text-right">Points</div>
-          <div className="text-right">Admin</div>
+        <div className="flex items-baseline justify-between px-8 pt-7 pb-5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            All campers
+          </div>
+          <div className="text-xs text-muted-foreground/70 tabular">
+            {filtered.length} {filtered.length === 1 ? 'team' : 'teams'}
+          </div>
         </div>
 
-        {isLoading && (
-          <div className="px-6 py-16 text-center text-sm text-muted-foreground">Loading…</div>
-        )}
-
-        {!isLoading && filtered.length === 0 && (
-          <div className="px-6 py-16 text-center text-sm text-muted-foreground">
+        {isLoading ? (
+          <div className="px-8 py-20 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div className="px-8 py-20 text-center text-sm text-muted-foreground">
             {search ? 'No campers match that search.' : 'No campers yet.'}
           </div>
+        ) : (
+          <div>
+            {filtered.map((u) => (
+              <CamperRow key={u.uid} user={u} onClick={() => navigate(`/campers/${u.uid}`)} />
+            ))}
+          </div>
         )}
-
-        <div>
-          {filtered.map((u) => (
-            <CamperRow key={u.uid} user={u} onClick={() => navigate(`/campers/${u.uid}`)} />
-          ))}
-        </div>
       </BentoTile>
     </motion.div>
   )
@@ -60,43 +59,44 @@ export default function CampersPage() {
 
 function CamperRow({ user, onClick }: { user: UserProfile; onClick: () => void }) {
   const contact = user.phoneNumber ? formatPhoneNumber(user.phoneNumber) : (user.email ?? '')
-  const initial = displayNameFor(user)[0]?.toUpperCase() ?? '?'
   const sonsLine = (user.sons?.length ?? 0) > 0 ? user.sons!.filter(Boolean).join(' · ') : null
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)_72px_84px_88px] items-center gap-4 px-6 py-3.5 border-b border-border/40 last:border-0 transition group hover:bg-cougar/[0.04]"
+      className="w-full text-left grid grid-cols-[minmax(0,1fr)_auto_auto] md:grid-cols-[minmax(0,1fr)_minmax(0,260px)_auto_auto] items-center gap-6 px-8 py-5 transition group hover:bg-cougar/[0.04] focus:outline-none focus-visible:bg-cougar/[0.06]"
     >
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="h-9 w-9 shrink-0 rounded-full bg-cougar/12 text-cougar text-xs font-bold flex items-center justify-center">
-          {initial}
-        </div>
-        <div className="min-w-0">
-          <div className="text-sm font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[15px] font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
             {displayNameFor(user)}
-          </div>
-          {sonsLine && (
-            <div className="text-[11.5px] text-muted-foreground truncate">{sonsLine}</div>
+          </span>
+          {user.isAdmin && (
+            <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.14em] text-cougar bg-cougar/10 rounded-full px-1.5 py-0.5">
+              Admin
+            </span>
           )}
         </div>
+        {sonsLine && (
+          <div className="text-[12.5px] text-muted-foreground truncate mt-0.5">
+            {sonsLine}
+          </div>
+        )}
       </div>
 
-      <div className="text-sm text-muted-foreground tabular truncate">
+      <div className="hidden md:block text-sm text-muted-foreground tabular truncate">
         {contact || '—'}
       </div>
 
-      <div className="text-sm tabular text-right">{user.completedQuests?.length ?? 0}</div>
+      <div className="flex items-baseline gap-1.5 tabular">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">Done</span>
+        <span className="text-sm font-semibold">{user.completedQuests?.length ?? 0}</span>
+      </div>
 
-      <div className="text-base tabular font-bold text-right text-cougar">{user.points ?? 0}</div>
-
-      <div className="flex justify-end">
-        {user.isAdmin && (
-          <span className="inline-flex items-center rounded-full bg-cougar/15 text-cougar text-[10px] font-bold uppercase tracking-[0.12em] px-2 py-0.5">
-            Admin
-          </span>
-        )}
+      <div className="flex items-baseline gap-1.5 tabular min-w-[80px] justify-end">
+        <span className="text-2xl font-black text-cougar leading-none">{user.points ?? 0}</span>
+        <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">pts</span>
       </div>
     </button>
   )

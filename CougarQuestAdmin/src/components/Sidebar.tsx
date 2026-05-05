@@ -84,7 +84,7 @@ export default function Sidebar() {
         onClick={() => navigate('/')}
         className="flex items-center gap-3 px-6 pt-6 pb-3 hover:opacity-80 transition"
       >
-        <img src={logoSrc} alt="CougarQuest" className="h-8 w-8 object-contain shrink-0" />
+        <img src={logoSrc} alt="CougarQuest" className="h-11 w-11 object-contain shrink-0" />
         <div className="flex flex-col leading-tight text-left">
           <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>CougarQuest</h1>
           <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>

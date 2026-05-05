@@ -48,6 +48,12 @@ function ensureChildren(el: HTMLElement) {
   }
 }
 
+// Max attractive translate, in pixels. The tile shifts THIS much toward the
+// cursor when the cursor is right on top; falls off with proximity.
+const TILT_MAX = 1.6
+// Distance at which the tilt has fully decayed.
+const TILT_FAR = 520
+
 function update() {
   raf = 0
   const tiles = document.querySelectorAll<HTMLElement>('.glass-tile')
@@ -64,10 +70,20 @@ function update() {
     let ang = Math.atan2(dx, -dy) * RAD_TO_DEG
     if (ang < 0) ang += 360
 
+    // Subtle attractive shift: cursor right → tile leans right by ~1px.
+    // Falls off with distance so far-away tiles don't twitch when cursor moves.
+    const dist = Math.hypot(dx, dy)
+    const proximity = Math.max(0, 1 - dist / TILT_FAR)
+    const dirLen = Math.max(1, dist)
+    const tx = (dx / dirLen) * TILT_MAX * proximity
+    const ty = (dy / dirLen) * TILT_MAX * proximity
+
     const s = el.style
     s.setProperty('--cx', `${cx.toFixed(0)}px`)
     s.setProperty('--cy', `${cy.toFixed(0)}px`)
     s.setProperty('--ang', `${ang.toFixed(1)}deg`)
+    s.setProperty('--tx', `${tx.toFixed(2)}px`)
+    s.setProperty('--ty', `${ty.toFixed(2)}px`)
   }
 }
 

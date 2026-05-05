@@ -1,13 +1,13 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, updateDoc } from 'firebase/firestore'
-import { ArrowLeft } from 'lucide-react'
 import { motion } from 'motion/react'
 import { db } from '@/lib/firebase'
 import { useUsers, useQuests, displayNameFor } from '@/lib/queries'
 import { Button } from '@/components/ui/Button'
 import { BentoTile } from '@/components/ui/BentoTile'
 import { formatPhoneNumber } from '@/lib/formatters'
+import { useSubview } from '@/lib/subview'
 
 export default function CamperDetail() {
   const { uid } = useParams<{ uid: string }>()
@@ -17,6 +17,14 @@ export default function CamperDetail() {
   const { data: quests = [] } = useQuests()
 
   const user = users.find((u) => u.uid === uid)
+
+  // TopBar takes over with a back-pill on the left and the camper's team
+  // name centered. Keeps the subview chrome consistent with QuestEditor.
+  useSubview(user ? {
+    title: displayNameFor(user),
+    backTo: '/campers',
+    backLabel: 'Campers',
+  } : null)
 
   const toggleAdmin = useMutation({
     mutationFn: async () => {
@@ -53,27 +61,20 @@ export default function CamperDetail() {
       transition={{ type: 'spring', stiffness: 280, damping: 26 }}
       className="space-y-6 max-w-4xl mx-auto"
     >
-      <button
-        onClick={() => navigate('/campers')}
-        className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        All campers
-      </button>
-
       <BentoTile delay={0} hover={false} className="p-6">
         <div className="flex items-center gap-5">
           <div className="h-20 w-20 rounded-full bg-cougar text-white text-2xl font-bold flex items-center justify-center shrink-0">
             {(displayNameFor(user))[0]?.toUpperCase() ?? '?'}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-3xl font-bold tracking-tight truncate">{displayNameFor(user)}</h1>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {user.isAdmin ? 'Camp admin' : 'Camper'}
+            </div>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
               {user.phoneNumber
                 ? <span className="tabular">{formatPhoneNumber(user.phoneNumber)}</span>
                 : user.email && <span>{user.email}</span>}
               {(user.sons?.length ?? 0) > 0 && <span>{user.sons!.filter(Boolean).join(' · ')}</span>}
-              {user.isAdmin && <span className="chip chip-cougar">Admin</span>}
             </div>
           </div>
         </div>

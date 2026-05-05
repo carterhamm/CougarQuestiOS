@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import { captureViewport } from '@/lib/glass/useBackgroundCapture'
+import { SubviewProvider } from '@/lib/subview'
 
 const titleMap: Record<string, string> = {
   '/':            'Overview',
@@ -46,25 +47,27 @@ export default function AppShell() {
 
   // Wagevo layout: floating sidebar (16px margin) + main with marginLeft 300.
   return (
-    <div className="h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <Sidebar />
-      <div style={{ marginLeft: 300 }} className="h-screen flex flex-col">
-        <TopBar title={title} />
-        <main className="flex-1 overflow-y-auto wg-scrollbar">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={loc.pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
-              className="max-w-7xl mx-auto px-8 py-8"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
-        </main>
+    <SubviewProvider>
+      <div className="h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+        <Sidebar />
+        <div style={{ marginLeft: 300 }} className="h-screen flex flex-col">
+          <TopBar title={title} />
+          <main className="flex-1 overflow-y-auto wg-scrollbar">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={loc.pathname}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+                className="max-w-7xl mx-auto px-8 py-8"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
       </div>
-    </div>
+    </SubviewProvider>
   )
 }
