@@ -1,10 +1,31 @@
-import { useMemo } from 'react'
-import { Map, Users, BadgeCheck, Sparkles, ArrowRight } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { BentoTile } from '@/components/ui/BentoTile'
+import { ArrowRight } from 'lucide-react'
 import { useQuests, useUsers, displayNameFor } from '@/lib/queries'
-import fathersAndSonsLogo from '@/assets/FathersAndSonsLogo.png'
+
+/* ---------- Counter that animates from 0 → target with an ease-out cubic. */
+function useCount(target: number, durationMs = 900) {
+  const [v, setV] = useState(0)
+  useEffect(() => {
+    if (target === 0) { setV(0); return }
+    const start = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setV(Math.round(target * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, durationMs])
+  return v
+}
+
+const fmtDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+const SPRING = { type: 'spring' as const, stiffness: 280, damping: 28 }
 
 export default function Overview() {
   const quests = useQuests()
@@ -24,118 +45,189 @@ export default function Overview() {
     return { totalQuests, totalUsers, totalCompletions, totalPoints, completionRate }
   }, [quests.data, users.data])
 
+  const heroPoints = useCount(stats.totalPoints, 1100)
   const topThree = (users.data ?? []).slice(0, 3)
+  const today = useMemo(() => fmtDate.format(new Date()), [])
+  const buildTag = useMemo(() => {
+    const d = new Date()
+    return `CQ·${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`
+  }, [])
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-      className="space-y-6"
-    >
-      <BentoTile delay={0} hover={false} className="relative overflow-hidden p-7 bg-gradient-to-br from-cougar-600 via-cougar to-cougar-700 text-white">
-        <div className="relative z-10 flex items-center justify-between gap-6">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
-              BYU Fathers &amp; Sons
-            </div>
-            <div className="text-3xl font-extrabold tracking-tight mt-1.5">
-              Camp at a glance
-            </div>
-            <div className="text-sm text-white/80 mt-1">
-              {stats.totalUsers} campers · {stats.totalQuests} quests · {stats.completionRate}% completion
-            </div>
+    <div className="space-y-16 pb-24">
+      {/* ---------- Eyebrow: system name · date · build · LIVE pulse */}
+      <motion.header
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={SPRING}
+        className="flex items-baseline justify-between"
+      >
+        <div className="space-y-1">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+            CougarQuest · Mission Control
           </div>
-          <img
-            src={fathersAndSonsLogo}
-            alt="Fathers and Sons"
-            className="h-24 w-24 object-contain drop-shadow-md hidden sm:block"
-          />
+          <div className="text-sm text-muted-foreground tabular">
+            {today}
+            <span className="mx-2 text-foreground/20">·</span>
+            <span className="font-mono text-[12.5px]">{buildTag}</span>
+          </div>
         </div>
-        <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-      </BentoTile>
+        <div className="inline-flex items-center gap-2.5 shrink-0">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cougar/70" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-cougar" />
+          </span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/70">
+            Live
+          </span>
+        </div>
+      </motion.header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatTile delay={0.04} label="Active quests" value={quests.isLoading ? '—' : stats.totalQuests} icon={<Map className="h-4 w-4" />} />
-        <StatTile delay={0.08} label="Campers"       value={users.isLoading ? '—' : stats.totalUsers} icon={<Users className="h-4 w-4" />} />
-        <StatTile delay={0.12} label="Completions"   value={users.isLoading ? '—' : stats.totalCompletions} hint={`${stats.completionRate}% rate`} icon={<BadgeCheck className="h-4 w-4" />} />
-        <StatTile delay={0.16} label="Points awarded" value={users.isLoading ? '—' : stats.totalPoints.toLocaleString()} icon={<Sparkles className="h-4 w-4" />} accent />
-      </div>
+      {/* ---------- Hero number — points awarded, animated, then a hairline
+                    completion meter under it. */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.55, delay: 0.05 }}
+        className="space-y-6"
+      >
+        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+          Points awarded
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <BentoTile delay={0.20} hover={false} className="lg:col-span-2 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold tracking-tight">Top campers</div>
-            <Link to="/leaderboard" className="text-xs font-semibold text-cougar inline-flex items-center gap-1 hover:underline">
-              View all <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+        <div
+          className="font-black tabular leading-[0.85] tracking-[-0.05em] text-foreground"
+          style={{ fontSize: 'clamp(72px, 14vw, 168px)' }}
+        >
+          {heroPoints.toLocaleString()}
+        </div>
+
+        <div className="flex items-baseline gap-4 pt-1">
+          <div className="relative h-px flex-1 bg-foreground/10 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${stats.completionRate}%` }}
+              transition={{ duration: 1.0, delay: 0.4, ease: [0.32, 0.72, 0, 1] }}
+              className="absolute inset-y-0 left-0 bg-cougar"
+            />
           </div>
-          <ul className="divide-y -mx-2">
-            {topThree.length === 0 && !users.isLoading && (
-              <li className="py-8 text-sm text-muted-foreground text-center">
-                No campers signed up yet.
-              </li>
-            )}
+          <div className="text-sm text-muted-foreground tabular shrink-0">
+            <span className="font-bold text-foreground tabular">{stats.completionRate}%</span>
+            <span className="ml-1.5">of camp complete</span>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* ---------- Inline stat row, no cards, separated by mid-dots. */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.25 }}
+        className="border-t border-foreground/10 pt-7 flex flex-wrap items-baseline gap-x-7 gap-y-4"
+      >
+        <Stat value={stats.totalUsers} label="Campers" />
+        <Sep />
+        <Stat value={stats.totalQuests} label="Quests" />
+        <Sep />
+        <Stat value={stats.totalCompletions} label="Completions" />
+      </motion.div>
+
+      {/* ---------- Camp leaders — flat rows, magazine numerals. */}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.35 }}
+      >
+        <div className="flex items-baseline justify-between border-t border-foreground/10 pt-7 pb-2">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+            Camp leaders
+          </div>
+          <Link
+            to="/leaderboard"
+            className="group text-[11px] font-bold uppercase tracking-[0.18em] text-cougar inline-flex items-center gap-1.5"
+          >
+            All ranks
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+
+        {topThree.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-8">No campers ranked yet.</div>
+        ) : (
+          <div>
             {topThree.map((u, i) => (
-              <li key={u.uid} className="px-2 py-3 flex items-center gap-4">
-                <span className="text-lg w-6 text-center">{['🥇', '🥈', '🥉'][i]}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">{displayNameFor(u)}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {u.completedQuests?.length ?? 0} quests completed
-                  </div>
+              <Link
+                key={u.uid}
+                to={`/campers/${u.uid}`}
+                className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-baseline gap-6 py-6 border-t border-foreground/5 first:border-t-0 transition-colors"
+              >
+                <span className="text-[34px] font-extralight tabular text-foreground/35 leading-none group-hover:text-cougar transition-colors">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span className="text-xl font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
+                  {displayNameFor(u)}
+                </span>
+                <div className="flex items-baseline gap-2 tabular">
+                  <span className="text-[28px] font-black text-foreground leading-none">
+                    {(u.points ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    PTS
+                  </span>
                 </div>
-                <div className="text-base font-black tabular text-cougar">{u.points ?? 0}</div>
-              </li>
+              </Link>
             ))}
-          </ul>
-        </BentoTile>
-
-        <BentoTile delay={0.24} hover={false} className="p-3">
-          <div className="px-2 pt-2 pb-3 text-sm font-semibold tracking-tight">Quick actions</div>
-          <div className="space-y-1">
-            <ActionRow to="/quests/new" label="Add a new quest" />
-            <ActionRow to="/broadcasts" label="Send a push to campers" />
-            <ActionRow to="/campers" label="Manage camper roster" />
-            <ActionRow to="/settings" label="Manage admin access" />
           </div>
-        </BentoTile>
-      </div>
-    </motion.div>
+        )}
+      </motion.section>
+
+      {/* ---------- Ops — text-only command-line style links. */}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.45 }}
+        className="border-t border-foreground/10 pt-7"
+      >
+        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60 pb-3">
+          Ops
+        </div>
+        <div className="space-y-0">
+          <Op to="/quests/new" label="Provision a new quest" />
+          <Op to="/broadcasts" label="Broadcast to camp" />
+          <Op to="/campers" label="Manage roster" />
+          <Op to="/settings" label="System settings" />
+        </div>
+      </motion.section>
+    </div>
   )
 }
 
-function StatTile({
-  delay, label, value, hint, icon, accent,
-}: {
-  delay: number
-  label: string
-  value: number | string
-  hint?: string
-  icon: React.ReactNode
-  accent?: boolean
-}) {
+function Stat({ value, label }: { value: number; label: string }) {
+  const v = useCount(value, 750)
   return (
-    <BentoTile delay={delay} className="p-5">
-      <div className="flex items-center justify-between text-muted-foreground">
-        <div className="text-xs font-semibold uppercase tracking-wider">{label}</div>
-        <div className="opacity-70">{icon}</div>
-      </div>
-      <div className={`mt-2 text-3xl font-black tabular ${accent ? 'text-cougar' : ''}`}>{value}</div>
-      {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
-    </BentoTile>
+    <div className="inline-flex items-baseline gap-2">
+      <span className="text-2xl font-bold tabular text-foreground">
+        {v.toLocaleString()}
+      </span>
+      <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </span>
+    </div>
   )
 }
 
-function ActionRow({ to, label }: { to: string; label: string }) {
+function Sep() {
+  return <span className="text-foreground/25 select-none" aria-hidden>·</span>
+}
+
+function Op({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="flex items-center justify-between rounded-2xl px-3 py-2.5 text-sm hover:bg-secondary transition group"
+      className="group flex items-baseline gap-3 py-2.5 text-foreground/85 hover:text-cougar transition-colors"
     >
-      <span className="font-medium">{label}</span>
-      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-cougar transition" />
+      <span className="text-cougar transition-transform group-hover:translate-x-0.5">→</span>
+      <span className="text-base font-medium">{label}</span>
     </Link>
   )
 }
