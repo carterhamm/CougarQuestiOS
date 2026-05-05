@@ -132,21 +132,20 @@
   html.dark .chip-success { background: rgb(20 83 45 / 0.45); color: rgb(187 247 208); }
   html.dark .chip-warn    { background: rgb(120 53 15 / 0.45); color: rgb(254 215 170); }
 
-  /* Glass-tile rim — uniform 0.84px width, OPACITY-only variance. The rim is
-     PURELY cursor-driven: the segment of the perimeter facing the cursor is
-     100% opaque, and it fades smoothly to 0% on the segment facing away. No
-     base rim — when nothing is lit, you see no rim. The fade is opacity along
-     the perimeter; the geometric width is constant.
+  /* Glass-tile rim + interior glow — both purely cursor-driven, both fade
+     to 0% on the side facing away from the cursor. The rim is the thin
+     ring around the perimeter; the glow is a very subtle interior wash on
+     the same side, like soft ambient bleed.
 
-     Light mode uses dark cougar-tinted rim color so it's visible on white
-     cards. Dark mode uses white. .glass-cougar swaps to a brighter cougar.
+     Per-tile state set by cursorGlow:
+       --cx, --cy   cursor position in tile-local pixels
+       --ang        bearing tile-center → cursor (CSS conic, 0=N, 90=E)
+       --rim-r/g/b  rim color RGB triplet (themed)
 
-     The rim is rendered as a child <span class="glass-rim" data-liquid-glass>
-     auto-injected by cursorGlow into every .glass-tile that doesn't sit
-     inside a [data-liquid-glass] subtree (the glass menu opts out so its
-     refraction shader isn't visually competing with my rim). The
-     data-liquid-glass attribute also excludes the rim from html2canvas
-     captures, so refractions stay clean. */
+     Each .glass-tile gets two child elements injected:
+       <span class="glass-glow" data-liquid-glass>  — first child, behind content
+       <span class="glass-rim"  data-liquid-glass>  — last child, above content
+     Both have data-liquid-glass so html2canvas excludes them from capture. */
 
   .glass-tile {
     --cx: 50%;
@@ -176,22 +175,22 @@
     --rim-b: 255;
   }
 
+  /* The ring — uniform 0.67px width (20% thinner than 0.84px), opacity
+     varies only along the perimeter. Two stacked lights:
+       radial — bright spot of rim closest to cursor when cursor is on/near
+       conic  — directional cone, 100% at --ang, 0% at ±90° from --ang,
+                fully 0% on the entire far hemisphere */
   .glass-rim {
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    z-index: 1;
-    padding: 0.84px;
+    z-index: 2;
+    padding: 0.67px;
     -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
     -webkit-mask-composite: xor;
             mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
             mask-composite: exclude;
-    /* Two superposed lights — both fade to 0% on the side away from cursor.
-         radial — proximity hotspot under the cursor (only paints the patch
-                  of rim closest to the cursor; off-tile cursor → 0)
-         conic  — directional cone — 100% facing cursor (--ang), fades to
-                  0% at ±90° from cursor, fully 0% on the entire far half */
     background:
       radial-gradient(circle 360px at var(--cx) var(--cy),
         rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 1.0)  0%,
@@ -204,6 +203,31 @@
         rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 1.0)  90deg,
         rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)    180deg,
         rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)    360deg
+      );
+  }
+
+  /* Interior glow — a very subtle wash inside the tile on the lit side.
+     Sits BEHIND content (z:0) so text/buttons stay legible. Two layers:
+       radial — localized bloom under the cursor when cursor is on the tile
+       linear — directional gradient that fades to 0% on the far side, so
+                even a tile across the screen shows a faint shade on the
+                cursor-facing edge of its interior */
+  .glass-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(circle 240px at var(--cx) var(--cy),
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0.10) 0%,
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0.04) 35%,
+        transparent 70%
+      ),
+      linear-gradient(var(--ang),
+        transparent 0%,
+        transparent 38%,
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0.05) 100%
       );
   }
 

@@ -350,6 +350,10 @@ async function captureFullBodyForComposite(): Promise<boolean> {
           el.style.height = 'auto';
           el.style.maxHeight = 'none';
         });
+        // Defensive: nuke the cursor-driven rim/glow overlays from the
+        // clone so even if html2canvas's ignoreElements predicate misses,
+        // the conic+mask gradients can never bleed into the texture.
+        doc.querySelectorAll('.glass-rim, .glass-glow').forEach((el) => el.remove());
       },
     });
 

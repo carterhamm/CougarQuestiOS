@@ -2,7 +2,7 @@ import { Download } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import { useUsers, displayNameFor } from '@/lib/queries'
-import { Card, CardHeader } from '@/components/ui/Card'
+import { BentoTile } from '@/components/ui/BentoTile'
 import { Button } from '@/components/ui/Button'
 
 export default function LeaderboardPage() {
@@ -73,42 +73,50 @@ export default function LeaderboardPage() {
         })}
       </div>
 
-      <Card className="overflow-hidden">
-        <CardHeader
-          title="Full ranking"
-          action={
-            <Button size="sm" variant="secondary" onClick={exportCsv} disabled={users.length === 0}>
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-          }
-        />
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <tr className="border-b">
-              <th className="px-5 py-3 w-16">Rank</th>
-              <th className="px-5 py-3">Team / Camper</th>
-              <th className="px-5 py-3 text-right">Completed</th>
-              <th className="px-5 py-3 text-right">Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && <tr><td colSpan={4} className="px-5 py-12 text-center text-muted-foreground">Loading…</td></tr>}
-            {rest.map((u, i) => (
-              <tr
-                key={u.uid}
-                onClick={() => navigate(`/campers/${u.uid}`)}
-                className="border-b last:border-0 hover:bg-secondary/50 cursor-pointer"
-              >
-                <td className="px-5 py-3 tabular text-muted-foreground">{i + 4}</td>
-                <td className="px-5 py-3 font-semibold">{displayNameFor(u)}</td>
-                <td className="px-5 py-3 text-right tabular">{u.completedQuests?.length ?? 0}</td>
-                <td className="px-5 py-3 text-right tabular font-bold text-cougar">{u.points ?? 0}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      <BentoTile delay={0.18} hover={false} className="overflow-hidden p-0">
+        <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-3">
+          <div className="text-sm font-semibold tracking-tight">Full ranking</div>
+          <Button size="sm" variant="secondary" onClick={exportCsv} disabled={users.length === 0}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-[64px_minmax(0,1fr)_96px_96px] items-center gap-4 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-b border-border/60">
+          <div>Rank</div>
+          <div>Team / Camper</div>
+          <div className="text-right">Completed</div>
+          <div className="text-right">Points</div>
+        </div>
+
+        {isLoading && (
+          <div className="px-6 py-16 text-center text-sm text-muted-foreground">Loading…</div>
+        )}
+
+        {!isLoading && rest.length === 0 && (
+          <div className="px-6 py-16 text-center text-sm text-muted-foreground">
+            No campers ranked yet beyond the podium.
+          </div>
+        )}
+
+        <div>
+          {rest.map((u, i) => (
+            <button
+              key={u.uid}
+              type="button"
+              onClick={() => navigate(`/campers/${u.uid}`)}
+              className="w-full text-left grid grid-cols-[64px_minmax(0,1fr)_96px_96px] items-center gap-4 px-6 py-3.5 border-b border-border/40 last:border-0 transition group hover:bg-cougar/[0.04]"
+            >
+              <div className="text-sm tabular text-muted-foreground">{i + 4}</div>
+              <div className="text-sm font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
+                {displayNameFor(u)}
+              </div>
+              <div className="text-sm tabular text-right">{u.completedQuests?.length ?? 0}</div>
+              <div className="text-base tabular font-bold text-right text-cougar">{u.points ?? 0}</div>
+            </button>
+          ))}
+        </div>
+      </BentoTile>
     </motion.div>
   )
 }

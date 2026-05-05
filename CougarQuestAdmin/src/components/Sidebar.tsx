@@ -7,8 +7,7 @@ import {
 import { useState } from 'react'
 import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/lib/auth'
-import logoLight from '@/assets/CougarQuestLogo-Light.png'
-import logoDark from '@/assets/CougarQuestLogo-Dark.png'
+import logoFs from '@/assets/FathersAndSonsLogo.png'
 
 const navItems = [
   { to: '/',            label: 'Overview',    icon: LayoutDashboard },
@@ -32,7 +31,7 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const logoSrc = theme === 'dark' ? logoDark : logoLight
+  const logoSrc = logoFs
 
   // Wagevo's signature glass-border: padding-box layer = surface,
   // border-box layer = the gradient rim that shows through the transparent border.

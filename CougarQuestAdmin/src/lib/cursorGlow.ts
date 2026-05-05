@@ -1,17 +1,19 @@
 /**
- * Cursor as a directional light source for `.glass-tile` rims.
+ * Cursor as a directional light source for `.glass-tile` elements.
  *
- * Each tile gets a `<span class="glass-rim" data-liquid-glass>` auto-injected
- * as the first child. The rim's CSS uses `--cx,--cy,--ang` (set here per
- * frame) to draw an opacity-varying ring whose cursor-facing segment is
- * 100% opaque and whose far segment fades to 0%.
+ * Each tile gets TWO children auto-injected:
+ *   <span class="glass-glow" data-liquid-glass>  — first  (behind content)
+ *   <span class="glass-rim"  data-liquid-glass>  — last   (above content)
+ * Both have data-liquid-glass so html2canvas's ignoreElements predicate
+ * excludes them from the menu's refraction texture.
  *
- * Tiles inside a [data-liquid-glass] subtree (the glass menu) are skipped —
- * their refraction shader handles its own visual edges and we don't want our
- * rim competing with it.
+ * Per frame we set on each tile:
+ *   --cx, --cy   cursor in tile-local pixels (drives radial bloom + glow)
+ *   --ang        bearing tile-center → cursor (CSS conic 0=N / 90=E)
  *
- * data-liquid-glass on the rim itself excludes it from html2canvas capture so
- * the rim never appears in the menu's refracted texture.
+ * Void HTML elements (<input>, <img>, etc.) cannot have children, so we
+ * skip them — wrap such elements in a div with .glass-tile if you want
+ * the rim treatment.
  */
 
 let installed = false
@@ -21,24 +23,36 @@ let lastY = 0
 
 const RAD_TO_DEG = 180 / Math.PI
 
-function ensureRim(el: HTMLElement) {
-  // Don't inject into glass-menu elements — they manage their own visuals.
-  if (el.closest('[data-liquid-glass]')) return
-  const first = el.firstElementChild
-  if (first && first.classList.contains('glass-rim')) return
-  const rim = document.createElement('span')
-  rim.className = 'glass-rim'
-  rim.setAttribute('data-liquid-glass', '')
-  rim.setAttribute('aria-hidden', 'true')
-  el.prepend(rim)
+const VOID_TAGS = new Set([
+  'INPUT', 'IMG', 'BR', 'HR', 'AREA', 'BASE', 'COL', 'EMBED',
+  'LINK', 'META', 'PARAM', 'SOURCE', 'TRACK', 'WBR',
+])
+
+function ensureChildren(el: HTMLElement) {
+  if (VOID_TAGS.has(el.tagName)) return
+  let glow = el.firstElementChild
+  if (!glow || !glow.classList.contains('glass-glow')) {
+    glow = document.createElement('span')
+    glow.className = 'glass-glow'
+    glow.setAttribute('data-liquid-glass', '')
+    glow.setAttribute('aria-hidden', 'true')
+    el.prepend(glow)
+  }
+  let rim = el.lastElementChild
+  if (!rim || !rim.classList.contains('glass-rim')) {
+    rim = document.createElement('span')
+    rim.className = 'glass-rim'
+    rim.setAttribute('data-liquid-glass', '')
+    rim.setAttribute('aria-hidden', 'true')
+    el.appendChild(rim)
+  }
 }
 
 function update() {
   raf = 0
   const tiles = document.querySelectorAll<HTMLElement>('.glass-tile')
   for (const el of tiles) {
-    if (el.closest('[data-liquid-glass]')) continue
-    ensureRim(el)
+    ensureChildren(el)
     const r = el.getBoundingClientRect()
     if (r.width === 0 || r.height === 0) continue
 

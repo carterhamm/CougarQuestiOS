@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
+import type { UserProfile } from '@/lib/types'
 import { useUsers, displayNameFor } from '@/lib/queries'
 import { formatPhoneNumber } from '@/lib/formatters'
-import { Card } from '@/components/ui/Card'
+import { BentoTile } from '@/components/ui/BentoTile'
 
 export default function CampersPage() {
   const navigate = useNavigate()
@@ -28,60 +29,75 @@ export default function CampersPage() {
       transition={{ type: 'spring', stiffness: 280, damping: 26 }}
       className="space-y-5"
     >
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <tr className="border-b">
-                <th className="px-5 py-3">Team / Camper</th>
-                <th className="px-5 py-3">Contact</th>
-                <th className="px-5 py-3 text-right">Completed</th>
-                <th className="px-5 py-3 text-right">Points</th>
-                <th className="px-5 py-3 text-right">Admin</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading && <tr><td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">No campers match.</td></tr>
-              )}
-              {filtered.map((u) => {
-                const contact = u.phoneNumber
-                  ? formatPhoneNumber(u.phoneNumber)
-                  : (u.email ?? '')
-                return (
-                  <tr
-                    key={u.uid}
-                    onClick={() => navigate(`/campers/${u.uid}`)}
-                    className="border-b last:border-0 hover:bg-secondary/50 cursor-pointer"
-                  >
-                    <td className="px-5 py-3">
-                      <div className="font-semibold">{displayNameFor(u)}</div>
-                      {(u.sons?.length ?? 0) > 0 && (
-                        <div className="text-xs text-muted-foreground line-clamp-1">
-                          {u.sons!.filter(Boolean).join(' · ')}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-muted-foreground tabular truncate max-w-[260px]">
-                      {contact || '—'}
-                    </td>
-                    <td className="px-5 py-3 text-right tabular">{u.completedQuests?.length ?? 0}</td>
-                    <td className="px-5 py-3 text-right tabular font-semibold">{u.points ?? 0}</td>
-                    <td className="px-5 py-3 text-right">
-                      {u.isAdmin && (
-                        <span className="inline-block rounded-full bg-cougar/10 text-cougar text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
-                          Admin
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+      <BentoTile delay={0.05} hover={false} className="overflow-hidden p-0">
+        <div className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)_72px_84px_88px] items-center gap-4 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-b border-border/60">
+          <div>Camper</div>
+          <div>Contact</div>
+          <div className="text-right">Done</div>
+          <div className="text-right">Points</div>
+          <div className="text-right">Admin</div>
         </div>
-      </Card>
+
+        {isLoading && (
+          <div className="px-6 py-16 text-center text-sm text-muted-foreground">Loading…</div>
+        )}
+
+        {!isLoading && filtered.length === 0 && (
+          <div className="px-6 py-16 text-center text-sm text-muted-foreground">
+            {search ? 'No campers match that search.' : 'No campers yet.'}
+          </div>
+        )}
+
+        <div>
+          {filtered.map((u) => (
+            <CamperRow key={u.uid} user={u} onClick={() => navigate(`/campers/${u.uid}`)} />
+          ))}
+        </div>
+      </BentoTile>
     </motion.div>
+  )
+}
+
+function CamperRow({ user, onClick }: { user: UserProfile; onClick: () => void }) {
+  const contact = user.phoneNumber ? formatPhoneNumber(user.phoneNumber) : (user.email ?? '')
+  const initial = displayNameFor(user)[0]?.toUpperCase() ?? '?'
+  const sonsLine = (user.sons?.length ?? 0) > 0 ? user.sons!.filter(Boolean).join(' · ') : null
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)_72px_84px_88px] items-center gap-4 px-6 py-3.5 border-b border-border/40 last:border-0 transition group hover:bg-cougar/[0.04]"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="h-9 w-9 shrink-0 rounded-full bg-cougar/12 text-cougar text-xs font-bold flex items-center justify-center">
+          {initial}
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
+            {displayNameFor(user)}
+          </div>
+          {sonsLine && (
+            <div className="text-[11.5px] text-muted-foreground truncate">{sonsLine}</div>
+          )}
+        </div>
+      </div>
+
+      <div className="text-sm text-muted-foreground tabular truncate">
+        {contact || '—'}
+      </div>
+
+      <div className="text-sm tabular text-right">{user.completedQuests?.length ?? 0}</div>
+
+      <div className="text-base tabular font-bold text-right text-cougar">{user.points ?? 0}</div>
+
+      <div className="flex justify-end">
+        {user.isAdmin && (
+          <span className="inline-flex items-center rounded-full bg-cougar/15 text-cougar text-[10px] font-bold uppercase tracking-[0.12em] px-2 py-0.5">
+            Admin
+          </span>
+        )}
+      </div>
+    </button>
   )
 }

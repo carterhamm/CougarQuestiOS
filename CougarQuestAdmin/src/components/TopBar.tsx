@@ -66,17 +66,17 @@ export default function TopBar({ title }: { title: string }) {
 
       <div className="flex justify-center min-w-0">
         {showSearch && (
-          <div className="relative w-full max-w-xl">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <div className="glass-tile relative w-full max-w-xl h-11 rounded-full bg-background/55 border border-border/60 transition focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
             <input
               ref={inputRef}
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={placeholder}
-              className="glass-tile w-full h-11 rounded-full border bg-background/60 pl-10 pr-16 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition"
+              className="absolute inset-0 w-full h-full rounded-full bg-transparent pl-10 pr-16 text-sm placeholder:text-muted-foreground focus:outline-none"
             />
-            <kbd className="hidden sm:inline-flex items-center gap-1 absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground/80 bg-secondary/70 rounded-md px-1.5 py-0.5 pointer-events-none">
+            <kbd className="hidden sm:inline-flex items-center gap-1 absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground/80 bg-secondary/70 rounded-md px-1.5 py-0.5 pointer-events-none z-10">
               ⌘K
             </kbd>
           </div>
