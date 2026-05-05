@@ -350,6 +350,10 @@ async function captureFullBodyForComposite(): Promise<boolean> {
           el.style.height = 'auto';
           el.style.maxHeight = 'none';
         });
+        // Defensive: drop the cursor-driven rim overlays from the clone in
+        // case ignoreElements ever misses (the spans use mask-composite and
+        // a conic gradient — they should never bleed into the texture).
+        doc.querySelectorAll('.glass-rim').forEach((el) => el.remove());
       },
     });
 

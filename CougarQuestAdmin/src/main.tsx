@@ -6,6 +6,9 @@ import './index.css'
 import App from './App'
 import { AuthProvider } from '@/lib/auth'
 import { ThemeProvider } from '@/lib/theme'
+import { installCursorGlow } from '@/lib/cursorGlow'
+
+installCursorGlow()
 
 const queryClient = new QueryClient({
   defaultOptions: {

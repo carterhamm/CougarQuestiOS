@@ -132,26 +132,37 @@
   html.dark .chip-success { background: rgb(20 83 45 / 0.45); color: rgb(187 247 208); }
   html.dark .chip-warn    { background: rgb(120 53 15 / 0.45); color: rgb(254 215 170); }
 
-  /* Glass tile rim — `box-shadow: inset 0 0 0 0.67px <color>`. The browser
-     renders this against the element's actual border-radius, which means
-     perfect corners at every radius value — no mask-composite, no subpixel
-     mask artifacts, no AA seams. Width and opacity are uniform around the
-     entire perimeter. Color is themed through --rim-r/g/b so .glass-cougar
-     just swaps the triplet. */
+  /* Glass tile rim is two layers stacked:
+
+     1) BASELINE — `box-shadow: inset 0 0 0 0.67px <color>` directly on the
+        .glass-tile element. The browser renders this against the element's
+        actual border-radius, so corners are perfect at every radius — no
+        mask AA seams, no subpixel artifacts. Always visible at every
+        corner so the rim never "disappears."
+
+     2) CURSOR HIGHLIGHT — a `<span class="glass-rim" data-liquid-glass>`
+        injected into every .glass-tile by cursorGlow. Same border-radius
+        and 0.67px width via mask-composite, but with a conic-gradient
+        background pivoted at --ang (the bearing tile-center → cursor) so
+        the segment of the rim facing the cursor brightens additively.
+        data-liquid-glass excludes it from html2canvas captures. */
   .glass-tile {
+    --ang: 315deg;
     --rim-r: 0;
     --rim-g: 30;
     --rim-b: 80;
-    --rim-alpha: 0.40;
+    --rim-base: 0.30;
+    --rim-peak: 0.85;
     position: relative;
     isolation: isolate;
-    box-shadow: inset 0 0 0 0.67px rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-alpha));
+    box-shadow: inset 0 0 0 0.67px rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-base));
   }
   html.dark .glass-tile {
     --rim-r: 255;
     --rim-g: 255;
     --rim-b: 255;
-    --rim-alpha: 0.22;
+    --rim-base: 0.18;
+    --rim-peak: 0.75;
   }
 
   /* Cougar variant — sidebar root + active nav tab. */
@@ -159,13 +170,39 @@
     --rim-r: 0;
     --rim-g: 71;
     --rim-b: 186;
-    --rim-alpha: 0.55;
+    --rim-base: 0.45;
+    --rim-peak: 0.95;
   }
   html.dark .glass-cougar {
     --rim-r: 130;
     --rim-g: 175;
     --rim-b: 255;
-    --rim-alpha: 0.45;
+    --rim-base: 0.35;
+    --rim-peak: 0.85;
+  }
+
+  .glass-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 2;
+    padding: 0.67px;
+    -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+            mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+            mask-composite: exclude;
+    /* Conic peaks at --ang (cursor direction), tapers to transparent at
+       ±90° from cursor, fully transparent on the far hemisphere. The
+       baseline rim under this stays visible everywhere, so even when this
+       layer is 0% the corners still show. */
+    background: conic-gradient(
+      from calc(var(--ang) - 90deg),
+      rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)                                   0deg,
+      rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-peak))                    90deg,
+      rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)                                  180deg,
+      rgb(var(--rim-r) var(--rim-g) var(--rim-b) / 0)                                  360deg
+    );
   }
 
   /* Glass menu — theme-aware text/separator colors so labels go white in
