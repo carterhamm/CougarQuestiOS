@@ -1,12 +1,9 @@
 import { Download } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useUsers, displayNameFor } from '@/lib/queries'
-import { BentoTile } from '@/components/ui/BentoTile'
-import { Button } from '@/components/ui/Button'
 
 export default function LeaderboardPage() {
-  const navigate = useNavigate()
   const { data: users = [], isLoading } = useUsers()
 
   function exportCsv() {
@@ -30,101 +27,148 @@ export default function LeaderboardPage() {
     URL.revokeObjectURL(url)
   }
 
-  const podium = users.slice(0, 3)
+  const champion = users[0]
+  const runnersUp = users.slice(1, 3)
   const rest = users.slice(3)
-
-  // Display order: 2nd, 1st, 3rd. Heights: 1st tallest.
-  const podiumLayout: { idx: number; height: string; gradient: string; label: string }[] = [
-    { idx: 1, height: 'h-36', gradient: 'from-cougar-300 to-cougar-500', label: '2' },
-    { idx: 0, height: 'h-48', gradient: 'from-cougar-400 to-cougar-700', label: '1' },
-    { idx: 2, height: 'h-28', gradient: 'from-cougar-200 to-cougar-400', label: '3' },
-  ]
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-      className="space-y-8"
+      transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+      className="space-y-12 pb-16"
     >
-      <div className="grid grid-cols-3 gap-4 items-end">
-        {podiumLayout.map(({ idx, height, gradient, label }, i) => {
-          const u = podium[idx]
-          if (!u) return <div key={idx} />
-          return (
-            <motion.div
-              key={u.uid}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 280, damping: 24, delay: i * 0.06 }}
-              className="flex flex-col items-center gap-3"
-            >
-              <div className="text-center">
-                <div className="text-sm font-semibold line-clamp-2">{displayNameFor(u)}</div>
-                <div className="text-xs text-muted-foreground tabular">{u.points ?? 0} pts</div>
-              </div>
-              <div
-                className={`glass-tile w-full ${height} rounded-3xl bg-gradient-to-b ${gradient} flex items-end justify-center pb-4 shadow-lg`}
-              >
-                <span className="text-white text-4xl font-black drop-shadow-md tabular">{label}</span>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
-
-      <BentoTile delay={0.18} hover={false} className="overflow-hidden p-0">
-        <div className="flex items-baseline justify-between gap-3 px-8 pt-7 pb-5">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Full ranking
-            </div>
-            <div className="text-xs text-muted-foreground/70 tabular mt-0.5">
-              {users.length} {users.length === 1 ? 'team' : 'teams'}
-            </div>
-          </div>
-          <Button size="sm" variant="secondary" onClick={exportCsv} disabled={users.length === 0}>
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
-        </div>
-
-        {isLoading && (
-          <div className="px-8 py-20 text-center text-sm text-muted-foreground">Loading…</div>
-        )}
-
-        {!isLoading && rest.length === 0 && (
-          <div className="px-8 py-20 text-center text-sm text-muted-foreground">
-            No campers ranked yet beyond the podium.
-          </div>
-        )}
-
+      <header className="flex items-baseline justify-between">
         <div>
-          {rest.map((u, i) => (
-            <button
-              key={u.uid}
-              type="button"
-              onClick={() => navigate(`/campers/${u.uid}`)}
-              className="w-full text-left grid grid-cols-[56px_minmax(0,1fr)_auto_auto] items-center gap-6 px-8 py-5 transition group hover:bg-cougar/[0.04] focus:outline-none focus-visible:bg-cougar/[0.06]"
-            >
-              <div className="text-[26px] font-light tabular text-muted-foreground/40 leading-none">
-                {i + 4}
-              </div>
-              <div className="text-[15px] font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
-                {displayNameFor(u)}
-              </div>
-              <div className="flex items-baseline gap-1.5 tabular">
-                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">Done</span>
-                <span className="text-sm font-semibold">{u.completedQuests?.length ?? 0}</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 tabular min-w-[80px] justify-end">
-                <span className="text-2xl font-black text-cougar leading-none">{u.points ?? 0}</span>
-                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">pts</span>
-              </div>
-            </button>
-          ))}
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+            Standings
+          </div>
+          <div className="text-sm text-muted-foreground tabular mt-1">
+            {users.length} {users.length === 1 ? 'team' : 'teams'} · live
+          </div>
         </div>
-      </BentoTile>
+        <button
+          onClick={exportCsv}
+          disabled={users.length === 0}
+          className="group text-[11px] font-bold uppercase tracking-[0.18em] text-cougar inline-flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+        >
+          <Download className="h-3.5 w-3.5 transition-transform group-hover:translate-y-0.5" />
+          Export CSV
+        </button>
+      </header>
+
+      {isLoading ? (
+        <div className="text-center py-24 text-sm text-muted-foreground">Loading standings…</div>
+      ) : users.length === 0 ? (
+        <div className="text-center py-24 text-sm text-muted-foreground">
+          No campers signed up yet.
+        </div>
+      ) : (
+        <>
+          {/* Champion — full editorial hero */}
+          {champion && (
+            <Link to={`/campers/${champion.uid}`} className="group block">
+              <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-cougar">
+                Champion
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-6 mt-3">
+                <div
+                  className="font-black tracking-[-0.04em] leading-[0.9] truncate group-hover:text-cougar transition-colors"
+                  style={{ fontSize: 'clamp(48px, 9vw, 108px)' }}
+                >
+                  {displayNameFor(champion)}
+                </div>
+                <div className="flex items-baseline gap-2 tabular shrink-0">
+                  <span
+                    className="font-black text-cougar leading-none"
+                    style={{ fontSize: 'clamp(48px, 7.5vw, 88px)' }}
+                  >
+                    {(champion.points ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    PTS
+                  </span>
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground tabular mt-3">
+                {(champion.completedQuests?.length ?? 0)} quests completed
+                {(champion.sons?.length ?? 0) > 0 && ` · ${champion.sons!.filter(Boolean).join(' · ')}`}
+              </div>
+            </Link>
+          )}
+
+          {/* Runners-up — same shape, scaled down */}
+          {runnersUp.length > 0 && (
+            <section className="border-t border-foreground/10 pt-7 space-y-7">
+              <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+                Runners-up
+              </div>
+              <div className="space-y-7">
+                {runnersUp.map((u, i) => (
+                  <Link
+                    key={u.uid}
+                    to={`/campers/${u.uid}`}
+                    className="group grid grid-cols-[80px_minmax(0,1fr)_auto] items-baseline gap-6"
+                  >
+                    <span className="text-[60px] font-extralight tabular text-foreground/35 leading-none group-hover:text-cougar transition-colors">
+                      {String(i + 2).padStart(2, '0')}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-3xl font-bold tracking-tight truncate group-hover:text-cougar transition-colors">
+                        {displayNameFor(u)}
+                      </div>
+                      <div className="text-xs text-muted-foreground tabular mt-1">
+                        {u.completedQuests?.length ?? 0} quests
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-2 tabular shrink-0">
+                      <span className="text-4xl font-black text-foreground leading-none">
+                        {(u.points ?? 0).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                        PTS
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Full ranking from 04 onwards */}
+          {rest.length > 0 && (
+            <section className="border-t border-foreground/10 pt-7">
+              <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+                Ranking
+              </div>
+              <div className="mt-2">
+                {rest.map((u, i) => (
+                  <Link
+                    key={u.uid}
+                    to={`/campers/${u.uid}`}
+                    className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-baseline gap-6 py-5 border-t border-foreground/5 first:border-t-0"
+                  >
+                    <span className="text-2xl font-extralight tabular text-foreground/40 leading-none">
+                      {i + 4}
+                    </span>
+                    <span className="text-base font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
+                      {displayNameFor(u)}
+                    </span>
+                    <div className="flex items-baseline gap-1.5 tabular shrink-0">
+                      <span className="text-xl font-black text-foreground leading-none">
+                        {(u.points ?? 0).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                        PTS
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
     </motion.div>
   )
 }

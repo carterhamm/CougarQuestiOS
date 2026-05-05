@@ -1,12 +1,10 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion } from 'motion/react'
 import {
   LayoutDashboard, Map, Users, Trophy, Megaphone,
-  Settings as SettingsIcon, Sun, Moon, ArrowRightFromLine,
+  Sun, Moon,
 } from 'lucide-react'
-import { useState } from 'react'
 import { useTheme } from '@/lib/theme'
-import { useAuth } from '@/lib/auth'
 import logoFs from '@/assets/FathersAndSonsLogo.png'
 
 const navItems = [
@@ -26,10 +24,8 @@ const navItems = [
  */
 export default function Sidebar() {
   const { theme, toggleTheme } = useTheme()
-  const { user, signOutNow } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const logoSrc = logoFs
 
@@ -122,12 +118,15 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Theme toggle + Settings */}
-      <div className="p-4 space-y-2">
+      {/* One discreet control at the bottom — theme toggle. Identity, sign-out,
+          and the settings page all live in the glass menu in the topbar; no
+          reason to duplicate them here. */}
+      <div className="p-5 flex items-center justify-between">
         <button
           onClick={toggleTheme}
-          className="flex items-center gap-3 w-full px-5 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none"
-          style={{ background: 'transparent', borderRadius: '20px', color: 'var(--text-secondary)' }}
+          aria-label="Toggle theme"
+          className="inline-flex items-center gap-2 h-9 px-3 rounded-full text-sm font-medium transition-colors"
+          style={{ color: 'var(--text-secondary)' }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = theme === 'dark'
               ? 'rgba(0, 71, 186, 0.14)'
@@ -135,71 +134,17 @@ export default function Sidebar() {
           }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
         >
-          {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-          <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
-          <kbd className="ml-auto text-[10px] uppercase tracking-widest font-bold rounded-md border px-1.5 py-0.5" style={{ borderColor: 'hsl(var(--border))', color: 'var(--text-muted)' }}>
-            D
-          </kbd>
+          {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          <span className="text-[11px] font-bold uppercase tracking-[0.16em]">
+            {theme === 'light' ? 'Dark' : 'Light'}
+          </span>
         </button>
-
-        <button
-          onClick={() => setSettingsOpen((v) => !v)}
-          className="flex items-center gap-3 w-full px-5 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none"
-          style={{
-            background: settingsOpen
-              ? (theme === 'dark' ? 'rgba(0, 71, 186, 0.18)' : 'rgba(0, 71, 186, 0.08)')
-              : 'transparent',
-            borderRadius: '20px',
-            color: 'var(--text-secondary)',
-          }}
-          onMouseEnter={(e) => {
-            if (!settingsOpen) {
-              e.currentTarget.style.backgroundColor = theme === 'dark'
-                ? 'rgba(0, 71, 186, 0.14)'
-                : 'rgba(0, 71, 186, 0.06)'
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!settingsOpen) e.currentTarget.style.backgroundColor = 'transparent'
-          }}
+        <kbd
+          className="text-[10px] uppercase tracking-widest font-bold rounded-md border px-1.5 py-0.5"
+          style={{ borderColor: 'hsl(var(--border))', color: 'var(--text-muted)' }}
         >
-          <SettingsIcon className="w-5 h-5" />
-          <span>Settings</span>
-        </button>
-
-        <AnimatePresence initial={false}>
-          {settingsOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-              className="overflow-hidden"
-            >
-              <button
-                onClick={() => signOutNow()}
-                className="flex items-center gap-3 w-full px-5 py-2.5 text-sm font-medium transition-all duration-200 mt-1"
-                style={{ background: 'transparent', borderRadius: '20px', color: 'hsl(var(--destructive))' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'hsl(var(--destructive) / 0.10)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
-              >
-                <ArrowRightFromLine className="w-5 h-5" />
-                <span>Sign out</span>
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* User chip */}
-        <div className="mt-3 flex items-center gap-2.5 px-3 py-2 rounded-2xl" style={{ background: theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }}>
-          <div className="h-8 w-8 rounded-full bg-cougar text-white text-xs font-bold flex items-center justify-center shrink-0">
-            {(user?.displayName || user?.email || '?').slice(0, 1).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{user?.displayName || 'Admin'}</div>
-            <div className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>{user?.email}</div>
-          </div>
-        </div>
+          D
+        </kbd>
       </div>
     </motion.aside>
   )

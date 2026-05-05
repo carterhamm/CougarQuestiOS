@@ -5,7 +5,6 @@ import { motion } from 'motion/react'
 import { db } from '@/lib/firebase'
 import { useUsers, useQuests, displayNameFor } from '@/lib/queries'
 import { Button } from '@/components/ui/Button'
-import { BentoTile } from '@/components/ui/BentoTile'
 import { formatPhoneNumber } from '@/lib/formatters'
 import { useSubview } from '@/lib/subview'
 
@@ -18,12 +17,10 @@ export default function CamperDetail() {
 
   const user = users.find((u) => u.uid === uid)
 
-  // TopBar takes over with a back-pill on the left and the camper's team
-  // name centered. Keeps the subview chrome consistent with QuestEditor.
   useSubview(user ? {
     title: displayNameFor(user),
     backTo: '/campers',
-    backLabel: 'Campers',
+    backLabel: 'Roster',
   } : null)
 
   const toggleAdmin = useMutation({
@@ -44,93 +41,143 @@ export default function CamperDetail() {
 
   if (!user) {
     return (
-      <div className="text-center py-16">
-        <p className="text-muted-foreground">Camper not found.</p>
-        <Button className="mt-4" onClick={() => navigate('/campers')}>Back to campers</Button>
+      <div className="text-center py-24">
+        <div className="text-sm text-muted-foreground">Camper not found.</div>
+        <Button className="mt-6" onClick={() => navigate('/campers')}>Back to roster</Button>
       </div>
     )
   }
 
   const completedTitles = new Set(user.completedQuests ?? [])
   const completedQuests = quests.filter((q) => completedTitles.has(q.title))
+  const contact = user.phoneNumber ? formatPhoneNumber(user.phoneNumber) : (user.email ?? '')
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-      className="space-y-6 max-w-4xl mx-auto"
+      transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+      className="space-y-12 pb-16 max-w-4xl mx-auto"
     >
-      <BentoTile delay={0} hover={false} className="p-6">
-        <div className="flex items-center gap-5">
-          <div className="h-20 w-20 rounded-full bg-cougar text-white text-2xl font-bold flex items-center justify-center shrink-0">
-            {(displayNameFor(user))[0]?.toUpperCase() ?? '?'}
+      {/* Identity */}
+      <header>
+        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-cougar">
+          {user.isAdmin ? 'Admin · Camper' : 'Camper'}
+        </div>
+        <div
+          className="font-black tracking-[-0.04em] leading-[0.9] mt-3"
+          style={{ fontSize: 'clamp(40px, 7vw, 88px)' }}
+        >
+          {displayNameFor(user)}
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 mt-4 text-sm text-muted-foreground tabular">
+          {contact && <span>{contact}</span>}
+          {(user.sons?.length ?? 0) > 0 && (
+            <>
+              <span className="text-foreground/25" aria-hidden>·</span>
+              <span>{user.sons!.filter(Boolean).join(' · ')}</span>
+            </>
+          )}
+        </div>
+      </header>
+
+      {/* Stats — inline editorial */}
+      <section className="border-t border-foreground/10 pt-8 flex flex-wrap items-baseline gap-x-10 gap-y-5">
+        <BigStat value={user.points ?? 0} label="Points" accent />
+        <Sep />
+        <BigStat value={user.completedQuests?.length ?? 0} label="Completed" />
+        <Sep />
+        <BigStat value={`${quests.length - (user.completedQuests?.length ?? 0)}`} label="Remaining" />
+      </section>
+
+      {/* Adjust points — minimal command-line buttons */}
+      <section className="border-t border-foreground/10 pt-7">
+        <div className="flex items-baseline justify-between mb-4">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+            Adjust points
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {user.isAdmin ? 'Camp admin' : 'Camper'}
-            </div>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {user.phoneNumber
-                ? <span className="tabular">{formatPhoneNumber(user.phoneNumber)}</span>
-                : user.email && <span>{user.email}</span>}
-              {(user.sons?.length ?? 0) > 0 && <span>{user.sons!.filter(Boolean).join(' · ')}</span>}
-            </div>
+          <div className="text-xs text-muted-foreground tabular">manual override</div>
+        </div>
+        <div className="flex items-center gap-2">
+          {[-10, -1, 1, 10].map((delta) => (
+            <button
+              key={delta}
+              type="button"
+              onClick={() => adjustPoints.mutate(delta)}
+              className="h-10 px-4 rounded-full bg-secondary/70 hover:bg-secondary text-sm font-bold tabular text-foreground transition"
+            >
+              {delta > 0 ? `+${delta}` : delta}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Admin access */}
+      <section className="border-t border-foreground/10 pt-7 flex items-baseline justify-between gap-6">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+            Admin access
+          </div>
+          <div className="text-sm text-muted-foreground mt-1">
+            {user.isAdmin ? 'Has dashboard access.' : 'No dashboard access.'}
           </div>
         </div>
-      </BentoTile>
+        <Button
+          size="sm"
+          variant={user.isAdmin ? 'destructive' : 'primary'}
+          onClick={() => toggleAdmin.mutate()}
+        >
+          {user.isAdmin ? 'Revoke' : 'Grant'}
+        </Button>
+      </section>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <BentoTile delay={0.05} className="p-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Points</div>
-          <div className="mt-2 text-4xl font-black tabular text-cougar">{user.points ?? 0}</div>
-          <div className="mt-3 flex gap-2 flex-wrap">
-            <Button size="sm" variant="secondary" onClick={() => adjustPoints.mutate(-10)}>−10</Button>
-            <Button size="sm" variant="secondary" onClick={() => adjustPoints.mutate(-1)}>−1</Button>
-            <Button size="sm" variant="secondary" onClick={() => adjustPoints.mutate(1)}>+1</Button>
-            <Button size="sm" variant="secondary" onClick={() => adjustPoints.mutate(10)}>+10</Button>
+      {/* Completed expeditions list */}
+      <section className="border-t border-foreground/10 pt-7">
+        <div className="flex items-baseline justify-between mb-4">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+            Completed expeditions
           </div>
-        </BentoTile>
-
-        <BentoTile delay={0.10} className="p-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Completed</div>
-          <div className="mt-2 text-4xl font-black tabular">{user.completedQuests?.length ?? 0}</div>
-          <div className="mt-1 text-xs text-muted-foreground">of {quests.length} quests</div>
-        </BentoTile>
-      </div>
-
-      <BentoTile delay={0.15} className="p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-semibold">Admin access</div>
-            <div className="text-xs text-muted-foreground">
-              {user.isAdmin ? 'Can sign in to this dashboard' : 'No dashboard access'}
-            </div>
+          <div className="text-xs text-muted-foreground tabular">
+            {completedQuests.length} / {quests.length}
           </div>
-          <Button size="sm" variant={user.isAdmin ? 'destructive' : 'primary'} onClick={() => toggleAdmin.mutate()}>
-            {user.isAdmin ? 'Revoke' : 'Grant'}
-          </Button>
-        </div>
-      </BentoTile>
-
-      <BentoTile delay={0.20} className="p-5">
-        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Completed quests ({completedQuests.length})
         </div>
         {completedQuests.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No completions yet.</div>
+          <div className="text-sm text-muted-foreground py-6">No completions yet.</div>
         ) : (
-          <ul className="space-y-1">
-            {completedQuests.map((q) => (
-              <li key={q.id} className="text-sm rounded-2xl px-3 py-2 bg-secondary/60">{q.title}</li>
+          <div>
+            {completedQuests.map((q, i) => (
+              <div
+                key={q.id}
+                className="grid grid-cols-[44px_minmax(0,1fr)] items-baseline gap-4 py-3 border-t border-foreground/5 first:border-t-0"
+              >
+                <span className="text-base font-extralight tabular text-foreground/45 leading-none">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span className="text-sm font-medium truncate">{q.title}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
-      </BentoTile>
+      </section>
 
-      <div className="text-[11px] text-muted-foreground text-center">
-        UID: <span className="font-mono">{user.uid}</span>
+      <div className="border-t border-foreground/10 pt-6 text-[10px] tabular text-muted-foreground/70 text-center font-mono">
+        UID · {user.uid}
       </div>
     </motion.div>
   )
+}
+
+function BigStat({ value, label, accent = false }: { value: number | string; label: string; accent?: boolean }) {
+  return (
+    <div className="inline-flex items-baseline gap-2.5 tabular">
+      <span className={`text-5xl font-black leading-none ${accent ? 'text-cougar' : 'text-foreground'}`}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </span>
+      <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+    </div>
+  )
+}
+
+function Sep() {
+  return <span className="text-foreground/25 select-none" aria-hidden>·</span>
 }

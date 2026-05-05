@@ -1,13 +1,11 @@
 import { useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
 import type { UserProfile } from '@/lib/types'
 import { useUsers, displayNameFor } from '@/lib/queries'
 import { formatPhoneNumber } from '@/lib/formatters'
-import { BentoTile } from '@/components/ui/BentoTile'
 
 export default function CampersPage() {
-  const navigate = useNavigate()
   const { data: users = [], isLoading } = useUsers()
   const [params] = useSearchParams()
   const search = params.get('q') ?? ''
@@ -24,62 +22,62 @@ export default function CampersPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-      className="space-y-5"
+      transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+      className="space-y-8 pb-16"
     >
-      <BentoTile delay={0.05} hover={false} className="overflow-hidden p-0">
-        <div className="flex items-baseline justify-between px-8 pt-7 pb-5">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            All campers
+      <header className="flex items-baseline justify-between">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground/60">
+            Roster
           </div>
-          <div className="text-xs text-muted-foreground/70 tabular">
+          <div className="text-sm text-muted-foreground tabular mt-1">
             {filtered.length} {filtered.length === 1 ? 'team' : 'teams'}
+            {search && ` · filtered by "${search}"`}
           </div>
         </div>
+      </header>
 
-        {isLoading ? (
-          <div className="px-8 py-20 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div className="px-8 py-20 text-center text-sm text-muted-foreground">
-            {search ? 'No campers match that search.' : 'No campers yet.'}
-          </div>
-        ) : (
-          <div>
-            {filtered.map((u) => (
-              <CamperRow key={u.uid} user={u} onClick={() => navigate(`/campers/${u.uid}`)} />
-            ))}
-          </div>
-        )}
-      </BentoTile>
+      {isLoading ? (
+        <div className="text-center py-24 text-sm text-muted-foreground">Loading roster…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-24 text-sm text-muted-foreground">
+          {search ? 'No campers match.' : 'No campers signed up yet.'}
+        </div>
+      ) : (
+        <div>
+          {filtered.map((u) => (
+            <CamperRow key={u.uid} user={u} />
+          ))}
+        </div>
+      )}
     </motion.div>
   )
 }
 
-function CamperRow({ user, onClick }: { user: UserProfile; onClick: () => void }) {
+function CamperRow({ user }: { user: UserProfile }) {
   const contact = user.phoneNumber ? formatPhoneNumber(user.phoneNumber) : (user.email ?? '')
   const sonsLine = (user.sons?.length ?? 0) > 0 ? user.sons!.filter(Boolean).join(' · ') : null
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full text-left grid grid-cols-[minmax(0,1fr)_auto_auto] md:grid-cols-[minmax(0,1fr)_minmax(0,260px)_auto_auto] items-center gap-6 px-8 py-5 transition group hover:bg-cougar/[0.04] focus:outline-none focus-visible:bg-cougar/[0.06]"
+    <Link
+      to={`/campers/${user.uid}`}
+      className="group grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] items-baseline gap-x-8 gap-y-1 py-7 border-t border-foreground/8 first:border-t-0 transition-colors"
     >
       <div className="min-w-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[15px] font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-xl font-semibold tracking-tight truncate group-hover:text-cougar transition-colors">
             {displayNameFor(user)}
           </span>
           {user.isAdmin && (
-            <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.14em] text-cougar bg-cougar/10 rounded-full px-1.5 py-0.5">
-              Admin
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-cougar">
+              ADMIN
             </span>
           )}
         </div>
         {sonsLine && (
-          <div className="text-[12.5px] text-muted-foreground truncate mt-0.5">
+          <div className="text-[12.5px] text-muted-foreground truncate mt-1">
             {sonsLine}
           </div>
         )}
@@ -89,15 +87,14 @@ function CamperRow({ user, onClick }: { user: UserProfile; onClick: () => void }
         {contact || '—'}
       </div>
 
-      <div className="flex items-baseline gap-1.5 tabular">
-        <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">Done</span>
-        <span className="text-sm font-semibold">{user.completedQuests?.length ?? 0}</span>
+      <div className="flex items-baseline gap-2 tabular shrink-0 justify-self-end">
+        <span className="text-3xl font-black text-foreground leading-none">
+          {(user.points ?? 0).toLocaleString()}
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+          PTS
+        </span>
       </div>
-
-      <div className="flex items-baseline gap-1.5 tabular min-w-[80px] justify-end">
-        <span className="text-2xl font-black text-cougar leading-none">{user.points ?? 0}</span>
-        <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">pts</span>
-      </div>
-    </button>
+    </Link>
   )
 }
