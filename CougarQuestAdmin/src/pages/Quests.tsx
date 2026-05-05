@@ -89,14 +89,16 @@ function QuestCard({
       whileHover={{ y: -2 }}
       className="group glass-tile rounded-3xl border bg-card text-left overflow-hidden transition-shadow hover:shadow-lg flex flex-col"
     >
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-secondary">
+      <div
+        className="relative aspect-[16/10] w-full overflow-hidden bg-secondary [transform:translateZ(0)] [will-change:transform] [-webkit-mask-image:-webkit-radial-gradient(white,black)]"
+      >
         {quest.photoURL ? (
           <img
             src={quest.photoURL}
             alt={quest.title}
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04] [backface-visibility:hidden]"
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
           />
         ) : (

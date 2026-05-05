@@ -59,29 +59,31 @@ export default function TopBar({ title }: { title: string }) {
   const pillWidth = Math.min(180, Math.max(110, 80 + firstName.length * 7))
 
   return (
-    <header className="h-20 sticky top-0 flex items-center gap-6 px-8">
-      <h1 className="text-2xl font-bold tracking-tight text-foreground shrink-0">
+    <header className="h-20 sticky top-0 grid grid-cols-[1fr_auto_1fr] items-center gap-6 px-8">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground truncate">
         {title}
       </h1>
 
-      {showSearch && (
-        <div className="relative flex-1 max-w-xl">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <input
-            ref={inputRef}
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={placeholder}
-            className="glass-tile w-full h-11 rounded-full border bg-background/60 pl-10 pr-16 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition"
-          />
-          <kbd className="hidden sm:inline-flex items-center gap-1 absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground/80 bg-secondary/70 rounded-md px-1.5 py-0.5 pointer-events-none">
-            ⌘K
-          </kbd>
-        </div>
-      )}
+      <div className="flex justify-center min-w-0">
+        {showSearch && (
+          <div className="relative w-full max-w-xl">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              ref={inputRef}
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={placeholder}
+              className="glass-tile w-full h-11 rounded-full border bg-background/60 pl-10 pr-16 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition"
+            />
+            <kbd className="hidden sm:inline-flex items-center gap-1 absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground/80 bg-secondary/70 rounded-md px-1.5 py-0.5 pointer-events-none">
+              ⌘K
+            </kbd>
+          </div>
+        )}
+      </div>
 
-      <div className="ml-auto shrink-0">
+      <div className="justify-self-end shrink-0">
         <GlassMenuButton
           pillWidth={pillWidth}
           pillHeight={40}
@@ -122,3 +124,4 @@ export default function TopBar({ title }: { title: string }) {
     </header>
   )
 }
+

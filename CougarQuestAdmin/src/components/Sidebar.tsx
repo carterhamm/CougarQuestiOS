@@ -46,10 +46,12 @@ export default function Sidebar() {
     backgroundColor: isActive
       ? (theme === 'dark' ? 'rgba(0, 71, 186, 0.22)' : 'rgba(0, 71, 186, 0.10)')
       : 'transparent',
+    // Active tab: cougar glow halo PLUS the glass-cougar rim (combined so the
+    // class-level box-shadow isn't overridden).
     boxShadow: isActive
       ? theme === 'dark'
-        ? '0 0 0 1px rgba(0, 71, 186, 0.7), 0 4px 12px rgba(0, 71, 186, 0.25)'
-        : '0 0 0 1px rgba(0, 71, 186, 0.4), 0 4px 12px rgba(0, 71, 186, 0.18)'
+        ? 'inset 0 0 0 0.84px rgb(130 175 255 / 0.7), 0 4px 12px rgba(0, 71, 186, 0.30)'
+        : 'inset 0 0 0 0.84px rgb(0 71 186 / 0.85), 0 4px 12px rgba(0, 71, 186, 0.22)'
       : 'none',
     color: isActive
       ? (theme === 'dark' ? '#ffffff' : 'hsl(var(--primary))')
@@ -72,12 +74,14 @@ export default function Sidebar() {
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         border: '1px solid transparent',
+        // Drop shadow + inset cougar rim. Inline style wins over the class
+        // box-shadow, so combine them here.
         boxShadow: theme === 'dark'
-          ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-          : '0 8px 32px rgba(0, 30, 80, 0.12)',
+          ? 'inset 0 0 0 0.84px rgb(130 175 255 / 0.55), 0 8px 32px rgba(0, 0, 0, 0.5)'
+          : 'inset 0 0 0 0.84px rgb(0 71 186 / 0.65), 0 8px 32px rgba(0, 30, 80, 0.12)',
         zIndex: 40,
       }}
-      className="hidden md:flex flex-col overflow-hidden"
+      className="glass-tile glass-cougar hidden md:flex flex-col overflow-hidden"
     >
       {/* Brand */}
       <button
@@ -103,7 +107,7 @@ export default function Sidebar() {
               to={to}
               end={to === '/'}
               style={navItemStyle(isActive)}
-              className="flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all duration-200"
+              className={`flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all duration-200${isActive ? ' glass-tile glass-cougar' : ''}`}
               onMouseEnter={(e) => {
                 if (!isActive) {
                   e.currentTarget.style.backgroundColor = theme === 'dark'
