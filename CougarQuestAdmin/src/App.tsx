@@ -4,7 +4,9 @@ import AppShell from '@/components/AppShell'
 import SignIn from '@/pages/SignIn'
 import Overview from '@/pages/Overview'
 import Quests from '@/pages/Quests'
+import QuestEditor from '@/pages/QuestEditor'
 import Campers from '@/pages/Campers'
+import CamperDetail from '@/pages/CamperDetail'
 import Leaderboard from '@/pages/Leaderboard'
 import Broadcasts from '@/pages/Broadcasts'
 import Settings from '@/pages/Settings'
@@ -29,7 +31,10 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route index element={<Overview />} />
         <Route path="quests" element={<Quests />} />
+        <Route path="quests/new" element={<QuestEditor />} />
+        <Route path="quests/:id" element={<QuestEditor />} />
         <Route path="campers" element={<Campers />} />
+        <Route path="campers/:uid" element={<CamperDetail />} />
         <Route path="leaderboard" element={<Leaderboard />} />
         <Route path="broadcasts" element={<Broadcasts />} />
         <Route path="settings" element={<Settings />} />

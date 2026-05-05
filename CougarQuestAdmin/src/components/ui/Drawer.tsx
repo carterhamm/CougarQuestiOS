@@ -20,8 +20,10 @@ export function Drawer({ open, onClose, title, children, footer, width = 'w-[480
 
   return (
     <div
+      data-liquid-glass
+      style={{ zIndex: 9500 }}
       className={cn(
-        'fixed inset-0 z-50 transition',
+        'fixed inset-0 transition',
         open ? 'pointer-events-auto' : 'pointer-events-none',
       )}
       aria-hidden={!open}

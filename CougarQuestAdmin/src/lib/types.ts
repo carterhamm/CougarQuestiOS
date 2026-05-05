@@ -18,6 +18,7 @@ export interface UserProfile {
   firstName?: string
   lastName?: string
   phoneNumber?: string
+  email?: string
   sons?: string[]
   points?: number
   completedQuests?: string[]

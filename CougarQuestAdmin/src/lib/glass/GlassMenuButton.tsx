@@ -182,15 +182,15 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
         uResolution: { value: new THREE.Vector2(100, 100) },
         uContainerPosition: { value: new THREE.Vector2(0, 0) },
         uContainerSize: { value: new THREE.Vector2(1, 1) },
-        uThickness: { value: 8.0 },        // higher = more Beer's law absorption = darker/grayer
+        uThickness: { value: 2.0 },
         uIor: { value: 1.5 },
         uDispersion: { value: new THREE.Vector3(0.01, 0.005, 0.015) },
-        uOpacity: { value: 0.92 },
-        uBlurRadius: { value: 18 },         // more blur = frosted gray look
+        uOpacity: { value: 0.985 },
+        uBlurRadius: { value: 22 },
         uTime: { value: 0 },
         uMouse: { value: new THREE.Vector2(0.5, 0.5) },
         uReducedMotion: { value: 0 },
-        uAberrationIntensity: { value: 0.6 },
+        uAberrationIntensity: { value: 0.22 },
         uWallpaperTint: { value: new THREE.Vector3(0.35, 0.35, 0.38) }, // gray tint
         uLightDir: { value: new THREE.Vector2(0.3, 0.5) },
         uLightIntensity: { value: 0.4 },
@@ -546,17 +546,18 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
   const menuBody = (
     <div style={{ padding: '5px', display: 'flex', flexDirection: 'column' }}>
       {menuHeader && (
-        <div style={{ padding: '10px 14px 12px', borderBottom: '1px solid rgba(0,0,0,0.08)', marginBottom: 4 }}>
+        <div className="gm-header-border" style={{ padding: '10px 14px 12px', marginBottom: 4 }}>
           {menuHeader}
         </div>
       )}
       {menuItems.map((item, i) => {
         if (item.sep) {
-          return <div key={i} style={{ height: 1, margin: '4px 12px', background: 'rgba(0,0,0,0.08)' }} />;
+          return <div key={i} className="gm-divider" style={{ height: 1, margin: '4px 12px' }} />;
         }
         return (
           <div
             key={i}
+            className="gm-item"
             onClick={() => { item.onClick?.(); close(); }}
             style={{
               display: 'flex',
@@ -564,22 +565,18 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
               justifyContent: 'space-between',
               padding: '8px 14px',
               cursor: 'pointer',
-              color: 'rgba(20, 22, 30, 0.95)',
               fontSize: 13.5,
               fontWeight: 500,
               borderRadius: 999,
               margin: '1px 0',
-              textShadow: '0 1px 2px rgba(255,255,255,0.55)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.45)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {item.icon && <span style={{ display: 'flex', opacity: 0.9 }}>{item.icon}</span>}
               <span>{item.label}</span>
             </div>
             {item.shortcut && (
-              <span style={{ fontSize: 11, color: 'rgba(20,22,30,0.45)', marginLeft: 20 }}>
+              <span className="gm-shortcut" style={{ fontSize: 11, marginLeft: 20 }}>
                 {item.shortcut}
               </span>
             )}
@@ -632,6 +629,7 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
         <div
           ref={menuRef}
           data-liquid-glass
+          className="glass-tile"
           style={{
             position: 'fixed',
             opacity: 0,
@@ -655,6 +653,7 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
       <button
         ref={pillRef}
         data-liquid-glass
+        className="glass-tile"
         onClick={open}
         style={{
           width: PILL_W,

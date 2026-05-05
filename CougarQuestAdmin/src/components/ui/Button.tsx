@@ -17,10 +17,10 @@ const variants: Record<Variant, string> = {
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'h-8 px-3 text-sm rounded-lg',
-  md: 'h-10 px-4 text-sm rounded-xl',
-  lg: 'h-11 px-5 text-base rounded-xl',
-  icon: 'h-9 w-9 rounded-lg',
+  sm:   'h-9 px-4 text-sm rounded-full',
+  md:   'h-11 px-5 text-sm rounded-full',
+  lg:   'h-12 px-6 text-base rounded-full',
+  icon: 'h-10 w-10 rounded-full',
 }
 
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
@@ -31,7 +31,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center gap-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-60 disabled:pointer-events-none',
+        'glass-tile inline-flex items-center justify-center gap-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-60 disabled:pointer-events-none',
         variants[variant],
         sizes[size],
         className,

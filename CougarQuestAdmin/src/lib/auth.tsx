@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider } from './firebase'
 
 interface AuthState {
@@ -24,6 +24,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!u) {
         setIsAdmin(false)
         setLoading(false)
+      } else {
+        const updates: Record<string, string> = {}
+        if (u.email) updates.email = u.email
+        if (u.displayName) updates.name = u.displayName
+        if (Object.keys(updates).length) {
+          setDoc(doc(db, 'users', u.uid), updates, { merge: true }).catch(() => {})
+        }
       }
     })
     return () => unsub()

@@ -86,7 +86,10 @@ let capturePaused = false;        // toggled by GlassMenuButton during morph
 let scrollPaused = false;         // toggled by hook-level scroll listener
 // CAPTURE_INTERVAL removed — captures are now event-driven (mount + menu-close).
 // No periodic loop = no periodic main-thread freezes.
-const CAPTURE_SCALE = 0.6;        // higher than 0.3 → sharper refraction sampling
+// CAPTURE_SCALE = 1.0 (full CSS resolution). DPR-doubling (2x) was 4× the work
+// per drawImage / GPU upload and made everything glitchy; 1.0 is still ~3× the
+// original 0.6 so refraction stays sharp.
+const CAPTURE_SCALE = 1.0;
 
 /** Resolve the scrollable element (admin app uses `<main>`). Cached lazily. */
 let _scrollEl: HTMLElement | null | undefined = undefined;
@@ -355,6 +358,11 @@ async function captureFullBodyForComposite(): Promise<boolean> {
     fullBodyCanvas = canvas;
     const tb = document.querySelector<HTMLElement>('header.sticky');
     topBarHeightPx = tb ? tb.offsetHeight : 0;
+    // Force compositeFrame to redraw on the next call even if scrollY hasn't
+    // changed — otherwise a route-change re-capture lands but the scratch
+    // canvas stays bound to the previous tab's pixels, and the menu refraction
+    // shows yesterday's leaderboard while you're already on the campers tab.
+    lastCompositedScroll = -1;
     return true;
   } catch {
     return false;
