@@ -16,28 +16,22 @@ const AuthCtx = createContext<AuthState | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
-  // Two readiness gates instead of one `loading` flag — without this split,
-  // a refresh briefly flashes the SignIn screen between (a) auth firing
-  // with the cached user and (b) the user-doc snapshot resolving isAdmin.
-  const [authReady, setAuthReady] = useState(false)
-  const [adminResolved, setAdminResolved] = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const safety = window.setTimeout(() => {
-      console.warn('[auth] onAuthStateChanged did not fire within 6s — assuming no user')
-      setAuthReady(true)
+    const authSafety = window.setTimeout(() => {
+      console.warn('[auth] onAuthStateChanged did not fire within 6s — forcing loading=false')
+      setLoading(false)
     }, 6000)
 
     const unsub = onAuthStateChanged(auth, (u) => {
-      window.clearTimeout(safety)
+      window.clearTimeout(authSafety)
       console.log('[auth] onAuthStateChanged →', u ? `signed in as ${u.uid}` : 'signed out')
       setUser(u)
-      setAuthReady(true)
       if (!u) {
         setIsAdmin(false)
-        setAdminResolved(true)
+        setLoading(false)
       } else {
-        setAdminResolved(false)
         const updates: Record<string, string> = {}
         if (u.email) updates.email = u.email
         if (u.displayName) updates.name = u.displayName
@@ -47,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     })
-    return () => { window.clearTimeout(safety); unsub() }
+    return () => { window.clearTimeout(authSafety); unsub() }
   }, [])
 
   useEffect(() => {
@@ -55,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let resolved = false
     const safety = window.setTimeout(() => {
       if (!resolved) {
-        console.warn('[auth] user doc snapshot did not fire within 5s — releasing')
-        setAdminResolved(true)
+        console.warn('[auth] user doc snapshot did not fire within 5s — forcing loading=false')
+        setLoading(false)
       }
     }, 5000)
     const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
@@ -64,19 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = snap.data()
       console.log('[auth] user doc snapshot:', data ? { isAdmin: Boolean(data.isAdmin) } : '<doc does not exist>')
       setIsAdmin(Boolean(data?.isAdmin))
-      setAdminResolved(true)
+      setLoading(false)
     }, (err) => {
       resolved = true
       console.error('[auth] user doc subscribe error:', err)
-      setAdminResolved(true)
+      setLoading(false)
     })
     return () => { window.clearTimeout(safety); unsub() }
   }, [user])
-
-  // The single `loading` value the rest of the app reads. True until BOTH
-  // auth has fired AND, if a user exists, isAdmin has been resolved — so
-  // the SignIn screen never appears mid-handshake on refresh.
-  const loading = !authReady || (user !== null && !adminResolved)
 
   const value: AuthState = {
     user,
