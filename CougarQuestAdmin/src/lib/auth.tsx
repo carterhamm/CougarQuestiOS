@@ -3,6 +3,17 @@ import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebas
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider } from './firebase'
 
+/* Bootstrap admin allowlist. Emails listed here are granted admin even
+   before their Firestore user doc has isAdmin=true — solves the
+   chicken-and-egg trap of "you need isAdmin in Firestore to use the
+   dashboard, but you need the dashboard to write it." On first sign-in
+   from an allowlisted email we also persist isAdmin=true to Firestore so
+   subsequent sessions don't need this list. To onboard another admin: add
+   their email here, sign them in once, then it can be removed. */
+const ADMIN_EMAILS = new Set<string>([
+  'carter.n.hammond@gmail.com',
+])
+
 interface AuthState {
   user: User | null
   isAdmin: boolean
@@ -13,9 +24,13 @@ interface AuthState {
 
 const AuthCtx = createContext<AuthState | null>(null)
 
+function isAllowlisted(email: string | null | undefined): boolean {
+  return Boolean(email && ADMIN_EMAILS.has(email.toLowerCase()))
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [docIsAdmin, setDocIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,15 +41,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const unsub = onAuthStateChanged(auth, (u) => {
       window.clearTimeout(authSafety)
-      console.log('[auth] onAuthStateChanged →', u ? `signed in as ${u.uid}` : 'signed out')
+      console.log('[auth] onAuthStateChanged →', u ? `signed in as ${u.uid} <${u.email}>` : 'signed out')
       setUser(u)
       if (!u) {
-        setIsAdmin(false)
+        setDocIsAdmin(false)
         setLoading(false)
       } else {
-        const updates: Record<string, string> = {}
+        const updates: Record<string, unknown> = {}
         if (u.email) updates.email = u.email
         if (u.displayName) updates.name = u.displayName
+        // Bootstrap admin into the user doc the first time an allowlisted
+        // email signs in, so the dashboard sees isAdmin=true on subsequent
+        // refreshes too (not just from this in-memory check).
+        if (isAllowlisted(u.email)) updates.isAdmin = true
         if (Object.keys(updates).length) {
           setDoc(doc(db, 'users', u.uid), updates, { merge: true })
             .catch((err) => console.warn('[auth] user doc merge failed:', err))
@@ -57,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resolved = true
       const data = snap.data()
       console.log('[auth] user doc snapshot:', data ? { isAdmin: Boolean(data.isAdmin) } : '<doc does not exist>')
-      setIsAdmin(Boolean(data?.isAdmin))
+      setDocIsAdmin(Boolean(data?.isAdmin))
       setLoading(false)
     }, (err) => {
       resolved = true
@@ -66,6 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return () => { window.clearTimeout(safety); unsub() }
   }, [user])
+
+  // Effective admin = Firestore admin OR allowlisted email. Either path
+  // unblocks the dashboard; both can be true simultaneously after bootstrap.
+  const isAdmin = docIsAdmin || isAllowlisted(user?.email)
 
   const value: AuthState = {
     user,
