@@ -361,12 +361,6 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
 
   // --- Animation loop ---
   useEffect(() => {
-    // When the menu/pill is settled, half the frames are skipped — the
-    // shader output barely changes from one frame to the next, but the
-    // blur kernel is expensive enough that running it at 60fps idles
-    // the GPU and starves anything else (motion animations, capture).
-    let settledSkip = 0;
-
     const loop = () => {
       const springs = springsRef.current;
       const target = targetRef.current;
@@ -374,35 +368,28 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
       const pill = pillRef.current;
 
       if (!springs || !target) {
-        // Not animating — only render every other frame.
-        settledSkip = (settledSkip + 1) & 1;
-        if (settledSkip === 0) {
-          if (isOpenRef.current && gl && settledStateRef.current) {
-            // Menu is open — keep rendering at exact settled state (no recalc)
-            renderGlass(gl, settledStateRef.current, 0);
-          } else if (!isOpenRef.current && gl && pill) {
-            // Idle — render glass at pill position
-            const pr = pill.getBoundingClientRect();
-            if (pr.width > 0) {
-              renderGlass(gl, {
-                width: pr.width, height: pr.height,
-                cx: pr.left + pr.width / 2,
-                cy: pr.top + pr.height / 2,
-                cornerRadius: PILL_H / 2,
-              }, pillBaseTint);
-            }
-          } else {
-            const wrap = wrapRef.current;
-            if (wrap) wrap.style.display = 'none';
+        // Not animating
+        if (isOpenRef.current && gl && settledStateRef.current) {
+          // Menu is open — keep rendering at exact settled state (no recalc)
+          renderGlass(gl, settledStateRef.current, 0);
+        } else if (!isOpenRef.current && gl && pill) {
+          // Idle — render glass at pill position
+          const pr = pill.getBoundingClientRect();
+          if (pr.width > 0) {
+            renderGlass(gl, {
+              width: pr.width, height: pr.height,
+              cx: pr.left + pr.width / 2,
+              cy: pr.top + pr.height / 2,
+              cornerRadius: PILL_H / 2,
+            }, pillBaseTint);
           }
+        } else {
+          const wrap = wrapRef.current;
+          if (wrap) wrap.style.display = 'none';
         }
         rafRef.current = requestAnimationFrame(loop);
         return;
       }
-
-      // Reset the skip counter so the resume-from-animation frame is
-      // never the one that gets dropped (would look like a hitch).
-      settledSkip = 0;
 
       // Animating
       const now = performance.now();

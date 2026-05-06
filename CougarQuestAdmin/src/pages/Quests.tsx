@@ -83,11 +83,13 @@ export default function QuestsPage() {
     return () => root.removeEventListener('scroll', onScroll)
   }, [filtered])
 
-  // Arrow-key navigation through the reel — one panel per press.
+  // Arrow-key navigation through the reel — one panel per press. The ref
+  // is read INSIDE the handler so this works even though the reel mounts
+  // after the page (it's behind the loading/empty branches initially).
   useEffect(() => {
-    const root = reelRef.current
-    if (!root) return
     const onKey = (e: KeyboardEvent) => {
+      const root = reelRef.current
+      if (!root) return
       const tag = (document.activeElement as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.key === 'ArrowRight') {
@@ -210,7 +212,7 @@ function QuestPanel({ quest, index, active, completions, onClick }: PanelProps) 
         damping: 28,
         delay: Math.min(index, 6) * 0.04,
       }}
-      className="group relative shrink-0 rounded-3xl overflow-hidden bg-foreground/5 text-left"
+      className={`group relative shrink-0 rounded-3xl overflow-hidden bg-foreground/5 text-left ${active ? 'glass-tile glass-cougar' : ''}`}
       style={{ width: PANEL_W, height: 560, scrollSnapAlign: 'center' }}
     >
       {quest.photoURL ? (

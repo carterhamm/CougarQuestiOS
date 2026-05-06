@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import {
@@ -28,6 +29,30 @@ export default function Sidebar() {
   const navigate = useNavigate()
 
   const logoSrc = logoFs
+
+  // Tab cycles through sidebar nav items globally (Wagevo-style). Skipped
+  // when focus is in a text input / contenteditable so form-field tabbing
+  // is preserved. Shift+Tab cycles backward.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return
+      e.preventDefault()
+      const cur = navItems.findIndex((item) =>
+        item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to),
+      )
+      const delta = e.shiftKey ? -1 : 1
+      const next = cur < 0
+        ? 0
+        : (cur + delta + navItems.length) % navItems.length
+      navigate(navItems[next].to)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [location.pathname, navigate])
 
   // Wagevo's signature glass-border: padding-box layer = surface,
   // border-box layer = the gradient rim that shows through the transparent border.
@@ -99,7 +124,7 @@ export default function Sidebar() {
               to={to}
               end={to === '/'}
               style={navItemStyle(isActive)}
-              className={`flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cougar focus-visible:ring-offset-2 focus-visible:ring-offset-transparent${isActive ? ' glass-tile glass-cougar' : ''}`}
+              className={`flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all duration-200${isActive ? ' glass-tile glass-cougar' : ''}`}
               onMouseEnter={(e) => {
                 if (!isActive) {
                   e.currentTarget.style.backgroundColor = theme === 'dark'

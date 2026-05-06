@@ -16,25 +16,28 @@ const AuthCtx = createContext<AuthState | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [loading, setLoading] = useState(true)
+  // Two readiness gates instead of one `loading` flag — without this split,
+  // a refresh briefly flashes the SignIn screen between (a) auth firing
+  // with the cached user and (b) the user-doc snapshot resolving isAdmin.
+  const [authReady, setAuthReady] = useState(false)
+  const [adminResolved, setAdminResolved] = useState(true)
 
   useEffect(() => {
-    // Hard ceiling on the loading state so we can never show the spinner
-    // forever, even if Firebase Auth fails to fire onAuthStateChanged at all
-    // (offline, blocked endpoint, broken init).
-    const authSafety = window.setTimeout(() => {
-      console.warn('[auth] onAuthStateChanged did not fire within 6s — forcing loading=false')
-      setLoading(false)
+    const safety = window.setTimeout(() => {
+      console.warn('[auth] onAuthStateChanged did not fire within 6s — assuming no user')
+      setAuthReady(true)
     }, 6000)
 
     const unsub = onAuthStateChanged(auth, (u) => {
-      window.clearTimeout(authSafety)
+      window.clearTimeout(safety)
       console.log('[auth] onAuthStateChanged →', u ? `signed in as ${u.uid}` : 'signed out')
       setUser(u)
+      setAuthReady(true)
       if (!u) {
         setIsAdmin(false)
-        setLoading(false)
+        setAdminResolved(true)
       } else {
+        setAdminResolved(false)
         const updates: Record<string, string> = {}
         if (u.email) updates.email = u.email
         if (u.displayName) updates.name = u.displayName
@@ -44,23 +47,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     })
-    return () => {
-      window.clearTimeout(authSafety)
-      unsub()
-    }
+    return () => { window.clearTimeout(safety); unsub() }
   }, [])
 
   useEffect(() => {
     if (!user) return
     let resolved = false
-    // Same hard ceiling on the user-doc snapshot. If Firestore rules block
-    // reads, or the connection just hangs, this releases the spinner so
-    // the rest of the app can render (the user lands on SignIn unless
-    // isAdmin became true).
     const safety = window.setTimeout(() => {
       if (!resolved) {
-        console.warn('[auth] user doc snapshot did not fire within 5s — forcing loading=false')
-        setLoading(false)
+        console.warn('[auth] user doc snapshot did not fire within 5s — releasing')
+        setAdminResolved(true)
       }
     }, 5000)
     const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
@@ -68,17 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = snap.data()
       console.log('[auth] user doc snapshot:', data ? { isAdmin: Boolean(data.isAdmin) } : '<doc does not exist>')
       setIsAdmin(Boolean(data?.isAdmin))
-      setLoading(false)
+      setAdminResolved(true)
     }, (err) => {
       resolved = true
       console.error('[auth] user doc subscribe error:', err)
-      setLoading(false)
+      setAdminResolved(true)
     })
-    return () => {
-      window.clearTimeout(safety)
-      unsub()
-    }
+    return () => { window.clearTimeout(safety); unsub() }
   }, [user])
+
+  // The single `loading` value the rest of the app reads. True until BOTH
+  // auth has fired AND, if a user exists, isAdmin has been resolved — so
+  // the SignIn screen never appears mid-handshake on refresh.
+  const loading = !authReady || (user !== null && !adminResolved)
 
   const value: AuthState = {
     user,
