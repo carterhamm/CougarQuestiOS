@@ -28,7 +28,7 @@ export default function SignIn() {
               which was glaring on a black background). */}
           <button
             onClick={signIn}
-            className="glass-tile w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-card text-foreground font-semibold py-3.5 transition hover:bg-secondary/60 focus:outline-none focus:ring-2 focus:ring-cougar"
+            className="glass-tile glass-cougar w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-card text-foreground font-semibold py-3.5 transition hover:bg-secondary/60 focus:outline-none focus:ring-2 focus:ring-cougar"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
