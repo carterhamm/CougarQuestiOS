@@ -142,18 +142,17 @@
 
   /* Glass tile rim is two layers stacked:
 
-     1) BASELINE — `box-shadow: inset 0 0 0 0.67px <color>` directly on the
-        .glass-tile element. The browser renders this against the element's
-        actual border-radius, so corners are perfect at every radius — no
-        mask AA seams, no subpixel artifacts. Always visible at every
-        corner so the rim never "disappears."
+     1) BASELINE — a 1px CSS outline drawn 1px INSIDE the element via
+        `outline-offset: -1px`. Outline is the only stroke technique the
+        browser renders truly uniformly along curved borders — no
+        sub-pixel mask seams, no AA falloff at corners. Same width and
+        opacity around the entire perimeter at every border-radius.
 
      2) CURSOR HIGHLIGHT — a `<span class="glass-rim" data-liquid-glass>`
-        injected into every .glass-tile by cursorGlow. Same border-radius
-        and 0.67px width via mask-composite, but with a conic-gradient
-        background pivoted at --ang (the bearing tile-center → cursor) so
-        the segment of the rim facing the cursor brightens additively.
-        data-liquid-glass excludes it from html2canvas captures. */
+        injected into every .glass-tile by cursorGlow. Mask-composite
+        ring with a conic gradient pivoted at --ang so the segment of
+        the rim facing the cursor brightens additively on top of the
+        outline. data-liquid-glass excludes it from html2canvas. */
   .glass-tile {
     --ang: 315deg;
     --rim-r: 0;
@@ -163,7 +162,8 @@
     --rim-peak: 0.85;
     position: relative;
     isolation: isolate;
-    box-shadow: inset 0 0 0 0.67px rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-base));
+    outline: 1px solid rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-base));
+    outline-offset: -1px;
   }
   html.dark .glass-tile {
     --rim-r: 255;
@@ -195,7 +195,7 @@
     border-radius: inherit;
     pointer-events: none;
     z-index: 2;
-    padding: 0.67px;
+    padding: 1px;
     -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
     -webkit-mask-composite: xor;
             mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);

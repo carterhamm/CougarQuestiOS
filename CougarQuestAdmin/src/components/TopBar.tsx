@@ -67,7 +67,7 @@ export default function TopBar({ title }: { title: string }) {
         {subview ? (
           <Link
             to={subview.backTo}
-            className="inline-flex items-center gap-2 h-10 pl-3 pr-4 rounded-full bg-secondary/80 hover:bg-secondary text-sm font-semibold text-foreground transition"
+            className="glass-tile inline-flex items-center gap-2 h-10 pl-3 pr-4 rounded-full bg-secondary/80 hover:bg-secondary text-sm font-semibold text-foreground transition"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>{subview.backLabel ?? 'Back'}</span>

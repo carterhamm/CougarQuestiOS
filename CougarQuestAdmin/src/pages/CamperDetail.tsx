@@ -104,7 +104,7 @@ export default function CamperDetail() {
               key={delta}
               type="button"
               onClick={() => adjustPoints.mutate(delta)}
-              className="h-10 px-4 rounded-full bg-secondary/70 hover:bg-secondary text-sm font-bold tabular text-foreground transition"
+              className="glass-tile h-10 min-w-[68px] px-4 rounded-full bg-secondary/70 hover:bg-secondary text-sm font-bold tabular text-foreground transition"
             >
               {delta > 0 ? `+${delta}` : delta}
             </button>

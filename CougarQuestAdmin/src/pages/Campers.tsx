@@ -83,7 +83,11 @@ function CamperRow({ user }: { user: UserProfile }) {
         )}
       </div>
 
-      <div className="hidden md:block text-sm text-muted-foreground tabular truncate">
+      {/* Use the same proportional metrics for both phone numbers and emails
+          so they read at the same visual weight. `tabular` would make the
+          digits in phone numbers wider than email letters and they'd
+          appear to be different sizes. */}
+      <div className="hidden md:block text-sm text-muted-foreground truncate">
         {contact || '—'}
       </div>
 
