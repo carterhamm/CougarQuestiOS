@@ -137,21 +137,15 @@ export default function QuestsPage() {
           {search ? `No expeditions match "${search}".` : 'No quests yet — provision the first.'}
         </div>
       ) : (
-        // -mx-8 + px-8 inside breaks out of AppShell's px-8 padding so the
-        // reel can bleed to the edges of the main area; scrollPaddingLeft
-        // keeps snap centers respecting the visual padding.
-        <div className="-mx-8">
-          <div
-            ref={reelRef}
-            className="overflow-x-auto scrollbar-hide pb-8"
-            style={{
-              scrollSnapType: 'x mandatory',
-              scrollPaddingLeft: '32px',
-              scrollPaddingRight: '32px',
-            }}
-          >
-            <div className="flex gap-5 px-8">
-              {filtered.map((q, i) => (
+        // Reel stays within AppShell's px-8 padding so panels can never
+        // scroll into the sidebar's space.
+        <div
+          ref={reelRef}
+          className="overflow-x-auto scrollbar-hide pb-8"
+          style={{ scrollSnapType: 'x mandatory' }}
+        >
+          <div className="flex gap-5">
+            {filtered.map((q, i) => (
                 <QuestPanel
                   key={q.id}
                   quest={q}
@@ -161,8 +155,7 @@ export default function QuestsPage() {
                   onClick={() => navigate(`/quests/${q.id}`)}
                 />
               ))}
-              <NewPanel onClick={() => navigate('/quests/new')} />
-            </div>
+            <NewPanel onClick={() => navigate('/quests/new')} />
           </div>
         </div>
       )}

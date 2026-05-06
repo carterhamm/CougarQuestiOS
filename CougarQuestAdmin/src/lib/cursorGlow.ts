@@ -18,8 +18,14 @@ let installed = false
 let raf = 0
 let lastX = 0
 let lastY = 0
+let lastUpdateAt = 0
 
 const RAD_TO_DEG = 180 / Math.PI
+// Cap rim-update rate. The cursor highlight is purely visual polish so 30fps
+// is plenty — at 60fps each move reads getBoundingClientRect on every glass
+// tile, which forces layout and competes with the menu's WebGL shader for
+// main-thread time.
+const UPDATE_INTERVAL_MS = 33
 
 const VOID_TAGS = new Set([
   'INPUT', 'IMG', 'BR', 'HR', 'AREA', 'BASE', 'COL', 'EMBED',
@@ -59,6 +65,9 @@ export function installCursorGlow() {
   window.addEventListener('mousemove', (e) => {
     lastX = e.clientX
     lastY = e.clientY
+    const now = performance.now()
+    if (now - lastUpdateAt < UPDATE_INTERVAL_MS) return
+    lastUpdateAt = now
     if (!raf) raf = requestAnimationFrame(update)
   }, { passive: true })
   const observer = new MutationObserver(() => { if (!raf) raf = requestAnimationFrame(update) })

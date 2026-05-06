@@ -99,7 +99,7 @@ export default function Sidebar() {
               to={to}
               end={to === '/'}
               style={navItemStyle(isActive)}
-              className={`flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all duration-200${isActive ? ' glass-tile glass-cougar' : ''}`}
+              className={`flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cougar focus-visible:ring-offset-2 focus-visible:ring-offset-transparent${isActive ? ' glass-tile glass-cougar' : ''}`}
               onMouseEnter={(e) => {
                 if (!isActive) {
                   e.currentTarget.style.backgroundColor = theme === 'dark'

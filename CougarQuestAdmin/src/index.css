@@ -158,18 +158,18 @@
     --rim-r: 0;
     --rim-g: 30;
     --rim-b: 80;
-    --rim-base: 0.30;
+    --rim-base: 0.22;
     --rim-peak: 0.85;
     position: relative;
     isolation: isolate;
-    outline: 1px solid rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-base));
-    outline-offset: -1px;
+    outline: 2px solid rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-base));
+    outline-offset: -2px;
   }
   html.dark .glass-tile {
     --rim-r: 255;
     --rim-g: 255;
     --rim-b: 255;
-    --rim-base: 0.18;
+    --rim-base: 0.14;
     --rim-peak: 0.75;
   }
 
@@ -178,14 +178,14 @@
     --rim-r: 0;
     --rim-g: 71;
     --rim-b: 186;
-    --rim-base: 0.45;
+    --rim-base: 0.40;
     --rim-peak: 0.95;
   }
   html.dark .glass-cougar {
     --rim-r: 130;
     --rim-g: 175;
     --rim-b: 255;
-    --rim-base: 0.35;
+    --rim-base: 0.30;
     --rim-peak: 0.85;
   }
 
@@ -195,7 +195,7 @@
     border-radius: inherit;
     pointer-events: none;
     z-index: 2;
-    padding: 1px;
+    padding: 2px;
     -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
     -webkit-mask-composite: xor;
             mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
