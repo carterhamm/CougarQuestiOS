@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
+import {
+  getRedirectResult,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  type User,
+} from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider } from './firebase'
 
@@ -17,6 +24,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Drain any pending redirect result on mount. After signInWithRedirect,
+  // the page reloads here; this returns the just-signed-in user (and also
+  // surfaces redirect-flow errors that would otherwise be silent).
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          console.log('[auth] redirect result:', result.user.uid, '<' + result.user.email + '>')
+        }
+      })
+      .catch((err) => console.error('[auth] getRedirectResult ERROR:', err))
+  }, [])
+
   useEffect(() => {
     const safety = window.setTimeout(() => {
       console.warn('[auth] onAuthStateChanged did not fire within 6s — forcing loading=false')
@@ -25,18 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const unsub = onAuthStateChanged(auth, (u) => {
       window.clearTimeout(safety)
-      console.log('[auth] →', u ? `signed in as ${u.uid} <${u.email}>` : 'signed out')
+      console.log('[auth] onAuthStateChanged →', u ? `signed in as ${u.uid} <${u.email}>` : 'signed out')
       setUser(u)
-      // Always release the spinner the moment auth resolves — the snapshot
-      // subscription used to gate this and would silently time out at 5s,
-      // leaving the SignIn screen showing even though the user was logged
-      // in. Now we don't depend on Firestore to render the dashboard.
       setLoading(false)
-
       if (u) {
-        // Persist email/displayName to the user doc so the Roster shows
-        // proper contact info, and stamp isAdmin=true so the doc reflects
-        // their access level in queries elsewhere.
         const updates: Record<string, unknown> = { isAdmin: true }
         if (u.email) updates.email = u.email
         if (u.displayName) updates.name = u.displayName
@@ -48,19 +60,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { window.clearTimeout(safety); unsub() }
   }, [])
 
+  /* signInWithPopup relies on third-party cookies / cross-window
+     postMessage. Modern browsers block those by default (Safari, Firefox,
+     Brave; Chrome incognito), which makes the popup *appear* to complete
+     but the auth state never propagates back to the main window — exactly
+     the symptom we've been seeing. signInWithRedirect navigates the whole
+     tab through Google's auth and returns to our origin with the session
+     attached; it doesn't need third-party cookies and is the recommended
+     flow for embedded / localhost / private-browsing scenarios.
+
+     We try the popup first because it's a nicer UX when it works, and
+     fall back to redirect on any popup failure (blocked, closed, internal
+     error, network). */
   const signIn = async () => {
     try {
       console.log('[auth] starting signInWithPopup…')
       const result = await signInWithPopup(auth, googleProvider)
-      console.log('[auth] popup completed, result.user:', result.user.uid, '<' + result.user.email + '>')
-      console.log('[auth] auth.currentUser:', auth.currentUser?.uid ?? 'null')
-      // Force state update directly from the popup result. Belt-and-
-      // suspenders: onAuthStateChanged should fire too, but if it doesn't
-      // (or fires before this completes), we still land on the dashboard.
+      console.log('[auth] popup completed:', result.user.uid, '<' + result.user.email + '>')
       setUser(result.user)
       setLoading(false)
     } catch (err) {
-      console.error('[auth] signInWithPopup ERROR:', err)
+      console.warn('[auth] popup failed → falling back to redirect:', err)
+      try {
+        await signInWithRedirect(auth, googleProvider)
+        // page navigates to Google; nothing after this line will run
+      } catch (err2) {
+        console.error('[auth] signInWithRedirect ALSO failed:', err2)
+      }
     }
   }
 

@@ -1,8 +1,19 @@
 import { useAuth } from '@/lib/auth'
+import { useTheme } from '@/lib/theme'
 
 export default function SignIn() {
   const { signIn, user, isAdmin, loading } = useAuth()
+  const { theme } = useTheme()
   const notAuthorized = user && !loading && !isAdmin
+
+  /* Same padding-box / border-box gradient trick the sidebar uses — a
+     transparent 1px border lets a multi-color gradient show through as a
+     glass rim, on top of a frosted padding-box surface. */
+  const buttonBg = theme === 'dark'
+    ? `linear-gradient(to bottom right, rgba(15, 17, 22, 0.78), rgba(8, 10, 14, 0.86)) padding-box,
+       linear-gradient(145deg, rgba(0, 71, 186, 0.55), rgba(255, 255, 255, 0.18), rgba(0, 71, 186, 0.30), rgba(255, 255, 255, 0.0)) border-box`
+    : `linear-gradient(to bottom right, rgba(255, 255, 255, 0.85), rgba(245, 248, 255, 0.72)) padding-box,
+       linear-gradient(145deg, rgba(0, 71, 186, 0.45), rgba(255, 255, 255, 0.7), rgba(0, 71, 186, 0.30), rgba(255, 255, 255, 0.0)) border-box`
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-6 relative overflow-hidden">
@@ -35,16 +46,17 @@ export default function SignIn() {
         </div>
 
         <div className="space-y-3">
-          {/* Real glass: translucent surface + backdrop blur so the
-              cougar orbs behind blur through, plus inner top highlight
-              and a soft cougar drop-glow for depth. glass-tile glass-cougar
-              adds the cougar-blue rim outline on top of all that. */}
           <button
             onClick={signIn}
-            className="glass-tile glass-cougar w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-card/35 backdrop-blur-xl backdrop-saturate-150 text-foreground font-semibold py-3.5 transition hover:bg-card/55 focus:outline-none focus:ring-2 focus:ring-cougar"
+            className="w-full inline-flex items-center justify-center gap-3 rounded-2xl text-foreground font-semibold py-3.5 transition focus:outline-none focus:ring-2 focus:ring-cougar"
             style={{
-              boxShadow:
-                'inset 0 1px 0 rgba(255,255,255,0.30), 0 10px 32px -10px rgba(0, 71, 186, 0.45)',
+              background: buttonBg,
+              border: '1px solid transparent',
+              backdropFilter: 'blur(20px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+              boxShadow: theme === 'dark'
+                ? '0 10px 32px rgba(0, 0, 0, 0.55)'
+                : '0 10px 32px rgba(0, 30, 80, 0.18)',
             }}
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
