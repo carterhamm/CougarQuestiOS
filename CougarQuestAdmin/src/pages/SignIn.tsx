@@ -5,8 +5,20 @@ export default function SignIn() {
   const notAuthorized = user && !loading && !isAdmin
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-6">
-      <div className="w-full max-w-sm space-y-10">
+    <div className="min-h-screen flex items-center justify-center bg-background px-6 relative overflow-hidden">
+      {/* Soft cougar orbs — gives the glass button real texture to refract
+          through (backdrop-blur on a flat background does nothing). */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(circle at 25% 28%, hsl(var(--primary) / 0.28), transparent 55%), ' +
+            'radial-gradient(circle at 78% 78%, hsl(var(--primary) / 0.22), transparent 55%)',
+        }}
+      />
+
+      <div className="w-full max-w-sm space-y-10 relative z-10">
         <div className="text-center space-y-2">
           <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
             CougarQuest · Mission Control
@@ -23,12 +35,17 @@ export default function SignIn() {
         </div>
 
         <div className="space-y-3">
-          {/* Themed button: bg-card + foreground text + border, so it
-              reads correctly in both light and dark mode (was bg-white,
-              which was glaring on a black background). */}
+          {/* Real glass: translucent surface + backdrop blur so the
+              cougar orbs behind blur through, plus inner top highlight
+              and a soft cougar drop-glow for depth. glass-tile glass-cougar
+              adds the cougar-blue rim outline on top of all that. */}
           <button
             onClick={signIn}
-            className="glass-tile glass-cougar w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-card text-foreground font-semibold py-3.5 transition hover:bg-secondary/60 focus:outline-none focus:ring-2 focus:ring-cougar"
+            className="glass-tile glass-cougar w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-card/35 backdrop-blur-xl backdrop-saturate-150 text-foreground font-semibold py-3.5 transition hover:bg-card/55 focus:outline-none focus:ring-2 focus:ring-cougar"
+            style={{
+              boxShadow:
+                'inset 0 1px 0 rgba(255,255,255,0.30), 0 10px 32px -10px rgba(0, 71, 186, 0.45)',
+            }}
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
@@ -41,7 +58,7 @@ export default function SignIn() {
 
           {notAuthorized && (
             <div className="text-[12.5px] text-destructive text-center">
-              That Google account isn&rsquo;t authorized. Open the camper app instead.
+              That Google account isn&rsquo;t authorized.
             </div>
           )}
         </div>

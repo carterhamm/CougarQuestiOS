@@ -48,13 +48,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { window.clearTimeout(safety); unsub() }
   }, [])
 
+  const signIn = async () => {
+    try {
+      console.log('[auth] starting signInWithPopup…')
+      const result = await signInWithPopup(auth, googleProvider)
+      console.log('[auth] popup completed, result.user:', result.user.uid, '<' + result.user.email + '>')
+      console.log('[auth] auth.currentUser:', auth.currentUser?.uid ?? 'null')
+      // Force state update directly from the popup result. Belt-and-
+      // suspenders: onAuthStateChanged should fire too, but if it doesn't
+      // (or fires before this completes), we still land on the dashboard.
+      setUser(result.user)
+      setLoading(false)
+    } catch (err) {
+      console.error('[auth] signInWithPopup ERROR:', err)
+    }
+  }
+
   const value: AuthState = {
     user,
     // Dev-mode gate: any signed-in Google user is admin. Lock this down with
     // proper Firestore rules + an allowlist before deploying publicly.
     isAdmin: !!user,
     loading,
-    signIn: async () => { await signInWithPopup(auth, googleProvider) },
+    signIn,
     signOutNow: async () => { await signOut(auth) },
   }
 
