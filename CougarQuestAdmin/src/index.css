@@ -140,27 +140,36 @@
   html.dark .chip-success { background: rgb(20 83 45 / 0.45); color: rgb(187 247 208); }
   html.dark .chip-warn    { background: rgb(120 53 15 / 0.45); color: rgb(254 215 170); }
 
-  /* Glass tile rim — a 1.2px CSS outline drawn 1.2px INSIDE the element
-     via `outline-offset: -1.2px`. Outline is the only stroke technique
-     the browser renders uniformly along curved borders — no mask seams,
-     no AA falloff at corners. Same width and opacity around the entire
-     perimeter at every border-radius. Color/opacity themed via
-     --rim-r/g/b/base so .glass-cougar etc. just swap the triplet. */
+  /* Glass tile rim — both baseline + cursor-conic live on a single
+     `<span class="glass-rim">` injected by cursorGlow.ts. The span uses
+     mask-composite to draw a perfectly uniform 1.2px-wide ring against
+     the parent's border-radius (no sub-pixel falloff at tight corners)
+     and stacks two backgrounds:
+       layer 1 (top)    cursor conic — fades from peak → 0 around the
+                        perimeter, peaks at the segment facing the cursor
+       layer 2 (bottom) solid base alpha — always visible, so the rim
+                        doesn't disappear from edges far from the cursor
+     The parent .glass-tile only sets the CSS variables and a stacking
+     context — its box-shadow stays free for the page-level floating
+     shadows (Sidebar, Cards, BentoTile all set their own). Inputs /
+     void elements can't host a child span and so render without the
+     rim — they fall back to Tailwind's `border` class. */
   .glass-tile {
+    --ang: 315deg;
     --rim-r: 0;
     --rim-g: 30;
     --rim-b: 80;
     --rim-base: 0.30;
+    --rim-peak: 0.85;
     position: relative;
     isolation: isolate;
-    outline: 1.2px solid rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-base));
-    outline-offset: -1.2px;
   }
   html.dark .glass-tile {
     --rim-r: 255;
     --rim-g: 255;
     --rim-b: 255;
-    --rim-base: 0.20;
+    --rim-base: 0.18;
+    --rim-peak: 0.75;
   }
 
   /* Cougar variant — sidebar root, active nav tab, focused quest panel. */
@@ -168,13 +177,40 @@
     --rim-r: 0;
     --rim-g: 71;
     --rim-b: 186;
-    --rim-base: 0.55;
+    --rim-base: 0.45;
+    --rim-peak: 0.95;
   }
   html.dark .glass-cougar {
     --rim-r: 130;
     --rim-g: 175;
     --rim-b: 255;
-    --rim-base: 0.45;
+    --rim-base: 0.35;
+    --rim-peak: 0.85;
+  }
+
+  .glass-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 2;
+    padding: 1.2px;
+    -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+            mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+            mask-composite: exclude;
+    /* Two stacked backgrounds — first listed renders on top.
+       Top:    conic peak around the cursor (additive highlight).
+       Bottom: solid baseline at --rim-base, visible the whole way around. */
+    background:
+      conic-gradient(
+        from calc(var(--ang) - 90deg),
+        transparent                                                                    0deg,
+        rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-peak))                 90deg,
+        transparent                                                                  180deg,
+        transparent                                                                  360deg
+      ),
+      rgb(var(--rim-r) var(--rim-g) var(--rim-b) / var(--rim-base));
   }
 
   /* Glass menu — theme-aware text/separator colors so labels go white in
@@ -232,4 +268,5 @@
     -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
   .dark .glass { background: rgba(15, 15, 15, 0.72); }
+
 }

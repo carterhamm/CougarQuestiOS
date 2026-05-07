@@ -32,8 +32,9 @@ export default function AppShell() {
   const loc = useLocation()
   const title = titleFor(loc.pathname)
 
-  // Re-capture the Liquid Glass texture on route change. Multiple captures
-  // catch DOM mount, query hydration, and slow Firestore round-trips.
+  // Re-capture the page texture on route change so the Liquid Glass
+  // shader has a fresh background to refract through. Multiple staggered
+  // captures cover DOM mount, query hydration, and slow Firestore loads.
   useEffect(() => {
     const t1 = window.setTimeout(recaptureOnIdle,  60)
     const t2 = window.setTimeout(recaptureOnIdle, 600)
@@ -46,13 +47,19 @@ export default function AppShell() {
   }, [loc.pathname])
 
   // Wagevo layout: floating sidebar (16px margin) + main with marginLeft 300.
+  // TopBar lives inside <main> as a sticky first child so page content
+  // scrolls *under* it. With TopBar as a flex sibling above main, the
+  // 80px header slot would always show whatever's behind the TopBar
+  // element (the AppShell's bg-primary, which is solid black in dark mode)
+  // — content could never reach behind the bar, so any opacity/mask fade
+  // on the TopBar would just reveal solid black instead of page content.
   return (
     <SubviewProvider>
       <div className="h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
         <Sidebar />
-        <div style={{ marginLeft: 300 }} className="h-screen flex flex-col">
-          <TopBar title={title} />
-          <main className="flex-1 overflow-y-auto wg-scrollbar">
+        <div style={{ marginLeft: 300 }} className="h-screen">
+          <main className="h-full overflow-y-auto wg-scrollbar">
+            <TopBar title={title} />
             <AnimatePresence mode="wait">
               <motion.div
                 key={loc.pathname}

@@ -23,20 +23,21 @@ export const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 console.log('[firebase] getAuth ready')
 
-/* If Firebase Auth's IndexedDB-backed persistence fails to initialize —
-   most often because the browser's IndexedDB is locked, corrupt, blocked
-   by an extension, or unavailable in a private window — onAuthStateChanged
-   never fires and the whole app sits at the spinner. Try local persistence
-   first; if the promise rejects, fall back to in-memory persistence so
-   auth at least *initializes* (sessions don't persist across reloads in
-   that case, but the app loads). */
-setPersistence(auth, browserLocalPersistence)
-  .then(() => console.log('[firebase] persistence: browserLocal'))
+/* Single persistence: IndexedDB-backed browserLocal. signInWithRedirect
+   needs a *single, consistent* persistence between the call (state
+   stored) and the post-redirect read (state retrieved); a fallback
+   ladder can land sign-in on one rung and the post-return load on
+   another, dropping the redirect state on the floor. If IndexedDB is
+   genuinely wedged, fall to inMemory only as a last resort to keep the
+   app loadable — sign-in won't survive the redirect in that mode and
+   the user has to clear site data. */
+export const authPersistenceReady = setPersistence(auth, browserLocalPersistence)
+  .then(() => { console.log('[firebase] persistence: browserLocal') })
   .catch((err) => {
     console.warn('[firebase] browserLocalPersistence failed → falling back to inMemory:', err)
     return setPersistence(auth, inMemoryPersistence).then(
-      () => console.log('[firebase] persistence: inMemory (sessions will not persist this run)'),
-      (err2) => console.error('[firebase] inMemoryPersistence ALSO failed:', err2),
+      () => { console.log('[firebase] persistence: inMemory (signInWithRedirect WILL NOT survive)') },
+      (err2) => { console.error('[firebase] inMemoryPersistence ALSO failed:', err2) },
     )
   })
 

@@ -8,7 +8,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import { auth, db, googleProvider } from './firebase'
+import { auth, authPersistenceReady, db, googleProvider } from './firebase'
 
 interface AuthState {
   user: User | null
@@ -20,32 +20,55 @@ interface AuthState {
 
 const AuthCtx = createContext<AuthState | null>(null)
 
+const REDIRECT_PENDING_KEY = 'cq:auth:redirect-pending'
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Drain any pending redirect result on mount. After signInWithRedirect,
-  // the page reloads here; this returns the just-signed-in user (and also
-  // surfaces redirect-flow errors that would otherwise be silent).
-  useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result) {
-          console.log('[auth] redirect result:', result.user.uid, '<' + result.user.email + '>')
-        }
-      })
-      .catch((err) => console.error('[auth] getRedirectResult ERROR:', err))
-  }, [])
+  /* Single-source-of-truth init.
 
+     The previous setup had three things racing to set user state:
+     getRedirectResult, onAuthStateChanged, and a 12s safety timer. They
+     could disagree mid-flight — e.g. safety timer fires loading=false
+     while getRedirectResult was still resolving — leaving the app on
+     SignIn even after Firebase finished authenticating.
+
+     New flow:
+       1. await persistence (so getRedirectResult reads the same store
+          signInWithRedirect wrote to before navigating to Google).
+       2. await getRedirectResult — drains any pending redirect into
+          Firebase's internal currentUser.
+       3. await auth.authStateReady() — Firebase guarantees this resolves
+          once it has settled on a definitive user (or null). After this
+          point auth.currentUser is the truth.
+       4. setUser(auth.currentUser); setLoading(false).
+       5. onAuthStateChanged keeps tracking ongoing changes. */
   useEffect(() => {
-    const safety = window.setTimeout(() => {
-      console.warn('[auth] onAuthStateChanged did not fire within 6s — forcing loading=false')
-      setLoading(false)
-    }, 6000)
+    let cancelled = false
+    const init = async () => {
+      try {
+        await authPersistenceReady
+        try {
+          const result = await getRedirectResult(auth)
+          console.log('[auth] getRedirectResult →', result?.user?.uid ?? 'null')
+        } catch (err) {
+          console.error('[auth] getRedirectResult threw:', err)
+        }
+        await auth.authStateReady()
+        console.log('[auth] authStateReady, currentUser =', auth.currentUser?.uid ?? 'null')
+      } finally {
+        if (cancelled) return
+        sessionStorage.removeItem(REDIRECT_PENDING_KEY)
+        setUser(auth.currentUser)
+        setLoading(false)
+      }
+    }
+    init()
 
     const unsub = onAuthStateChanged(auth, (u) => {
-      window.clearTimeout(safety)
-      console.log('[auth] onAuthStateChanged →', u ? `signed in as ${u.uid} <${u.email}>` : 'signed out')
+      if (cancelled) return
+      console.log('[auth] onAuthStateChanged →', u ? `${u.uid} <${u.email}>` : 'signed out')
       setUser(u)
       setLoading(false)
       if (u) {
@@ -57,36 +80,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    return () => { window.clearTimeout(safety); unsub() }
+    return () => { cancelled = true; unsub() }
   }, [])
 
-  /* signInWithPopup relies on third-party cookies / cross-window
-     postMessage. Modern browsers block those by default (Safari, Firefox,
-     Brave; Chrome incognito), which makes the popup *appear* to complete
-     but the auth state never propagates back to the main window — exactly
-     the symptom we've been seeing. signInWithRedirect navigates the whole
-     tab through Google's auth and returns to our origin with the session
-     attached; it doesn't need third-party cookies and is the recommended
-     flow for embedded / localhost / private-browsing scenarios.
+  /* Popup flow with redirect fallback. signInWithRedirect's iframe-based
+     auth-state handoff from authDomain back to the app origin gets blocked
+     by Safari ITP and Chrome's third-party-cookie phase-out, leaving the
+     post-Google-auth load with empty state and dropping us back on
+     SignIn — the loop. signInWithPopup uses cross-window postMessage
+     instead of iframe storage; browsers treat that differently and it
+     often still works.
 
-     We try the popup first because it's a nicer UX when it works, and
-     fall back to redirect on any popup failure (blocked, closed, internal
-     error, network). */
+     If popup's promise doesn't settle in 8s — i.e. the popup completed
+     Google auth but its postMessage to the opener is also being blocked
+     (Brave, Firefox total-cookie-protection) — fall through to the full
+     redirect as a last resort. */
   const signIn = async () => {
+    console.log('[auth] signIn → awaiting persistence ready')
+    await authPersistenceReady
     try {
       console.log('[auth] starting signInWithPopup…')
-      const result = await signInWithPopup(auth, googleProvider)
-      console.log('[auth] popup completed:', result.user.uid, '<' + result.user.email + '>')
-      setUser(result.user)
-      setLoading(false)
+      const result = await Promise.race([
+        signInWithPopup(auth, googleProvider),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+      ])
+      if (result) {
+        console.log('[auth] popup completed:', result.user.uid)
+        return
+      }
+      console.warn('[auth] popup did not resolve in 8s → falling back to redirect')
     } catch (err) {
       console.warn('[auth] popup failed → falling back to redirect:', err)
-      try {
-        await signInWithRedirect(auth, googleProvider)
-        // page navigates to Google; nothing after this line will run
-      } catch (err2) {
-        console.error('[auth] signInWithRedirect ALSO failed:', err2)
-      }
+    }
+    console.log('[auth] starting signInWithRedirect…')
+    sessionStorage.setItem(REDIRECT_PENDING_KEY, '1')
+    try {
+      await signInWithRedirect(auth, googleProvider)
+    } catch (err) {
+      sessionStorage.removeItem(REDIRECT_PENDING_KEY)
+      console.error('[auth] signInWithRedirect rejected:', err)
     }
   }
 

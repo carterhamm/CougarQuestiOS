@@ -62,7 +62,17 @@ export default function TopBar({ title }: { title: string }) {
   const pillWidth = Math.min(180, Math.max(110, 80 + firstName.length * 7))
 
   return (
-    <header className="h-20 sticky top-0 grid grid-cols-[1fr_auto_1fr] items-center gap-6 px-8">
+    <header
+      className="h-20 sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center gap-6 px-8"
+      style={{
+        // Fade the entire bar to fully transparent at the bottom edge.
+        // Now that content scrolls *under* the TopBar (TopBar is sticky
+        // inside <main>), this mask actually does what it should — page
+        // content fades into the topbar from below.
+        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%)',
+      }}
+    >
       <div className="min-w-0 flex items-center">
         {subview ? (
           <Link
@@ -85,7 +95,7 @@ export default function TopBar({ title }: { title: string }) {
             {subview.title}
           </h1>
         ) : showSearch ? (
-          <div className="glass-tile flex items-center w-full max-w-7xl h-11 rounded-full bg-card/85 backdrop-blur px-4 transition focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
+          <div className="glass-tile flex items-center w-full max-w-3xl h-11 rounded-full bg-card/85 backdrop-blur px-4 transition focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
             <Search className="h-4 w-4 text-muted-foreground shrink-0" />
             <input
               ref={inputRef}
@@ -107,7 +117,7 @@ export default function TopBar({ title }: { title: string }) {
           pillWidth={pillWidth}
           pillHeight={40}
           menuWidth={280}
-          menuRadius={12}
+          menuRadius={22}
           pillBaseTint={0}
           label={firstName || 'Menu'}
           menuHeader={

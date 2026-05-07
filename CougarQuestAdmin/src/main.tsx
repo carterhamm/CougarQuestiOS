@@ -6,6 +6,9 @@ import './index.css'
 import App from './App'
 import { AuthProvider } from '@/lib/auth'
 import { ThemeProvider } from '@/lib/theme'
+import { installCursorGlow } from '@/lib/cursorGlow'
+
+installCursorGlow()
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,7 +20,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <BrowserRouter basename="/admin">
           <AuthProvider>
             <App />
           </AuthProvider>

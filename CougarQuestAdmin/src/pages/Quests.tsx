@@ -14,7 +14,8 @@ import { useQuests, useUsers } from '@/lib/queries'
    scroll progress in real time and the centered panel index. */
 
 const PANEL_W = 400
-const PANEL_GAP = 20
+const PANEL_GAP = 20 // matches Tailwind's gap-5 on the flex reel
+const PANEL_PITCH = PANEL_W + PANEL_GAP
 
 export default function QuestsPage() {
   const navigate = useNavigate()
@@ -46,6 +47,13 @@ export default function QuestsPage() {
   const reelRef = useRef<HTMLDivElement>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [scrollProgress, setScrollProgress] = useState(0)
+  // Tracks the panel index the most recent arrow press intended to land
+  // on. Reading scroll position to derive "current panel" was unreliable —
+  // mandatory snap-points + smooth-scroll mid-flight could put scrollLeft
+  // anywhere, and our ±1 from a wrong "current" skipped panels. Tracking
+  // intent in a ref means rapid presses always step from where we're
+  // *going*, not where we are.
+  const intendedIndexRef = useRef<number | null>(null)
 
   // Detect which panel is currently centered → "active" treatment.
   useEffect(() => {
@@ -83,25 +91,52 @@ export default function QuestsPage() {
     return () => root.removeEventListener('scroll', onScroll)
   }, [filtered])
 
-  // Arrow-key navigation through the reel — one panel per press. The ref
-  // is read INSIDE the handler so this works even though the reel mounts
-  // after the page (it's behind the loading/empty branches initially).
+  // Arrow-key navigation. Pure-math approach: panel N starts at
+  // scrollLeft = N * PANEL_PITCH (panel width + gap), so we never
+  // measure the DOM. The previous DOM-rect approach kept skipping
+  // because hover-state and intersection-observer mid-render could
+  // change which rect was "currently leftmost" by one index.
+  // intendedIndexRef tracks where we're heading so rapid presses
+  // always step relative to the *target*, not the live scroll position.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const root = reelRef.current
       if (!root) return
       const tag = (document.activeElement as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (e.key === 'ArrowRight') {
-        root.scrollBy({ left: PANEL_W + PANEL_GAP, behavior: 'smooth' })
-        e.preventDefault()
-      } else if (e.key === 'ArrowLeft') {
-        root.scrollBy({ left: -(PANEL_W + PANEL_GAP), behavior: 'smooth' })
-        e.preventDefault()
-      }
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+      e.preventDefault()
+
+      const panelCount = root.querySelectorAll('[data-quest-id]').length
+      if (panelCount === 0) return
+
+      const fromIndex = intendedIndexRef.current
+        ?? Math.round(root.scrollLeft / PANEL_PITCH)
+
+      const nextIndex = e.key === 'ArrowRight'
+        ? Math.min(panelCount - 1, fromIndex + 1)
+        : Math.max(0, fromIndex - 1)
+      if (nextIndex === fromIndex) return
+
+      intendedIndexRef.current = nextIndex
+      root.scrollTo({ left: nextIndex * PANEL_PITCH, behavior: 'smooth' })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // User-initiated scrolls (wheel, trackpad, touch) clear the intent so
+  // the next arrow press starts from the actual scroll position.
+  useEffect(() => {
+    const root = reelRef.current
+    if (!root) return
+    const clear = () => { intendedIndexRef.current = null }
+    root.addEventListener('wheel', clear, { passive: true })
+    root.addEventListener('touchstart', clear, { passive: true })
+    return () => {
+      root.removeEventListener('wheel', clear)
+      root.removeEventListener('touchstart', clear)
+    }
   }, [])
 
   const activeIndex = activeId ? filtered.findIndex((q) => q.id === activeId) : -1
@@ -213,13 +248,12 @@ function QuestPanel({ quest, index, active, completions, onClick }: PanelProps) 
         delay: Math.min(index, 6) * 0.04,
       }}
       className={`group relative shrink-0 rounded-3xl overflow-hidden bg-foreground/5 text-left ${active ? 'glass-tile glass-cougar' : ''}`}
-      style={{ width: PANEL_W, height: 560, scrollSnapAlign: 'center' }}
+      style={{ width: PANEL_W, height: 560, scrollSnapAlign: 'start' }}
     >
       {quest.photoURL ? (
         <img
           src={quest.photoURL}
           alt={quest.title}
-          crossOrigin="anonymous"
           loading="lazy"
           decoding="async"
           className="absolute inset-0 w-full h-full object-cover transition-[filter] duration-700"
@@ -289,7 +323,7 @@ function NewPanel({ onClick }: { onClick: () => void }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
       className="group relative shrink-0 rounded-3xl border border-dashed border-foreground/15 hover:border-cougar/55 transition-colors flex flex-col items-center justify-center gap-3 text-foreground/45 hover:text-cougar"
-      style={{ width: PANEL_W, height: 560, scrollSnapAlign: 'center' }}
+      style={{ width: PANEL_W, height: 560, scrollSnapAlign: 'start' }}
     >
       <Plus className="h-10 w-10 transition-transform duration-300 group-hover:rotate-90" />
       <div className="text-[11px] font-bold uppercase tracking-[0.22em]">
