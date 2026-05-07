@@ -76,7 +76,6 @@ struct HomeView: View {
         // signals here. We push onto the NavigationStack so the user lands
         // in full QuestView, not the QuestsView sheet.
         .onReceive(DeepLinkState.shared.$pushOnHomeQuestId.compactMap { $0 }) { id in
-            print("🔗 HomeView pushing deep-linked quest id=\(id)")
             if !path.contains(id) {
                 path.append(id)
             }

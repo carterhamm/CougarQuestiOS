@@ -66,10 +66,7 @@ class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAut
                 // Firestore existence check & write
                 let userRef = Firestore.firestore().collection("users").document(uid)
                 userRef.getDocument { snapshot, error in
-                    if let error = error {
-                        print("Error fetching user document: \(error)")
-                        return
-                    }
+                    if error != nil { return }
                     if let snapshot = snapshot, snapshot.exists {
                         // Existing user → finish sign-in
                         DispatchQueue.main.async {
@@ -133,12 +130,10 @@ struct SignInView: View {
     
     private func updateFCMToken() {
         guard let user = Auth.auth().currentUser else { return }
-        Messaging.messaging().token { token, error in
+        Messaging.messaging().token { token, _ in
             if let token = token {
                 let userRef = Firestore.firestore().collection("users").document(user.uid)
                 userRef.setData(["fcmToken": token], merge: true)
-            } else if let error = error {
-                print("FCM token error:", error.localizedDescription)
             }
         }
     }
@@ -147,7 +142,6 @@ struct SignInView: View {
         NavigationStack {
             ZStack {
                 VStack(spacing: 16) {
-                    Spacer(minLength: 60)
 
                     // App icon as the splash logo — full-color rendered
                     // BYU Fathers and Sons design (the AppIconPreview asset
@@ -156,12 +150,14 @@ struct SignInView: View {
                     Image("AppIconPreview")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 120, height: 120)
+                        .frame(width: 150, height: 150)
                         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 26, style: .continuous)
                                 .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
                         )
+                        .padding(.top, 60)
+                        .padding(.bottom, 25)
                         .shadow(color: Color.cougarBlue.opacity(0.25), radius: 22, x: 0, y: 10)
 
                     VStack(spacing: 4) {
@@ -171,7 +167,7 @@ struct SignInView: View {
                             .foregroundColor(.secondary)
 
                         Text("CougarQuest")
-                            .font(.system(size: 42, weight: .black, design: .rounded))
+                            .font(.system(size: 42, weight: .black))
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [Color.cougarBlue, Color.cyan],
@@ -234,15 +230,22 @@ struct SignInView: View {
                             registerSkipPhoneStep = true
                             performGoogleSignIn()
                         } label: {
-                            Label("Continue with Google", systemImage: "globe")
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .adaptiveGlassEffectTinted(
-                                    color: Color.cougarBlue,
-                                    in: Capsule()
-                                )
+                            HStack(spacing: 8) {
+                                Image("GoogleG")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 18, height: 18)
+                                Text("Continue with Google")
+                            }
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .adaptiveGlassEffectTinted(
+                                color: Color.cougarBlue,
+                                in: Capsule()
+                            )
                         }
                         .buttonStyle(.plain)
                     }
@@ -317,10 +320,7 @@ struct SignInView: View {
                 let userRef = Firestore.firestore().collection("users").document(uid)
                 
                 userRef.getDocument { snapshot, error in
-                    if let error = error {
-                        print("Error fetching user document: \(error)")
-                        return
-                    }
+                    if error != nil { return }
                     if let snapshot = snapshot, snapshot.exists {
                         // Existing user → finish sign-in
                         DispatchQueue.main.async {

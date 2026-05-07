@@ -82,9 +82,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     func application(
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
-    ) {
-        print("Failed to register for remote notifications: \(error.localizedDescription)")
-    }
+    ) {}
     
     // Handle foreground notifications
     func userNotificationCenter(
@@ -123,19 +121,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     // FCM token refresh
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let token = fcmToken else { return }
-        print("Firebase registration token: \(token)")
         // Update Firestore with new token for signed-in user
         if let uid = Auth.auth().currentUser?.uid {
             Firestore.firestore()
                 .collection("users")
                 .document(uid)
-                .updateData(["fcmToken": token]) { error in
-                    if let error = error {
-                        print("❌ Failed to update FCM token in Firestore:", error.localizedDescription)
-                    } else {
-                        print("✅ FCM token updated for user: \(uid)")
-                    }
-                }
+                .updateData(["fcmToken": token])
         }
     }
 }
@@ -198,11 +189,9 @@ struct CougarQuestApp: App {
             }
             // Universal Link handling: cougarquest.com/quest/<id>
             .onOpenURL { url in
-                print("🔗 onOpenURL: \(url.absoluteString)")
                 DeepLinkState.shared.handle(url)
             }
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-                print("🔗 onContinueUserActivity webpageURL: \(activity.webpageURL?.absoluteString ?? "nil")")
                 if let url = activity.webpageURL {
                     DeepLinkState.shared.handle(url)
                 }

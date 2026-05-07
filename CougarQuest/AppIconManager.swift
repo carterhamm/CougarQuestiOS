@@ -57,16 +57,11 @@ final class AppIconManager: ObservableObject {
 
         // Some iOS versions throw if alternate icons aren't supported (e.g. on
         // CarPlay-only or on older devices); guard accordingly.
-        guard UIApplication.shared.supportsAlternateIcons else {
-            print("‼️ alternate icons not supported on this device")
-            return
-        }
+        guard UIApplication.shared.supportsAlternateIcons else { return }
 
         do {
             try await UIApplication.shared.setAlternateIconName(option.assetName)
             current = option
-        } catch {
-            print("‼️ setAlternateIconName failed:", error.localizedDescription)
-        }
+        } catch {}
     }
 }

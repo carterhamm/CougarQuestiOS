@@ -50,12 +50,10 @@ struct RegisterView: View {
 
     private func updateFCMToken() {
       guard let user = Auth.auth().currentUser else { return }
-      Messaging.messaging().token { token, error in
+      Messaging.messaging().token { token, _ in
         if let token = token {
           let userRef = Firestore.firestore().collection("users").document(user.uid)
           userRef.setData(["fcmToken": token], merge: true)
-        } else if let error = error {
-          print("FCM token error:", error.localizedDescription)
         }
       }
     }

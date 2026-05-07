@@ -29,15 +29,12 @@ final class DeepLinkState: ObservableObject {
     private init() {}
 
     func handle(_ url: URL) {
-        let id = CougarQuestLink.questId(from: url)
-        print("🔗 DeepLinkState.handle url=\(url.absoluteString) parsed id=\(id ?? "nil")")
-        guard let id = id else { return }
+        guard let id = CougarQuestLink.questId(from: url) else { return }
         // Defer to the next runloop. Setting an @Published synchronously
         // inside .onOpenURL / .onContinueUserActivity sometimes loses the
         // change to SwiftUI's diff (it's still mid-update for the URL
         // delivery). A trailing dispatch makes the observation reliable.
         DispatchQueue.main.async { [weak self] in
-            print("🔗 setting pendingQuestId = \(id)")
             self?.pendingQuestId = id
         }
     }
@@ -83,6 +80,11 @@ enum TabItem: CaseIterable, Identifiable, Hashable {
     }
 }
 
+private enum PendingImagePicker: String, Identifiable {
+    case library, camera
+    var id: String { rawValue }
+}
+
 struct FloatingTabBar: View {
     @Binding var selectedTab: TabItem
     @Binding var selectedQuest: Quest?
@@ -91,9 +93,9 @@ struct FloatingTabBar: View {
     @ObservedObject var morphState = MorphState.shared
     @Namespace private var animation
     @State private var dragOffset: CGFloat = 0
-    @State private var showImagePicker = false
-    @State private var imagePickerSource: UIImagePickerController.SourceType = .photoLibrary
+    @State private var pendingPicker: PendingImagePicker? = nil
     @State private var pickedImage: UIImage?
+    @State private var showCameraSettingsAlert = false
 
     private var isMorphActive: Bool {
         // Main floating bar only morphs on the HomeView path.
@@ -192,16 +194,27 @@ struct FloatingTabBar: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 20)
-        .sheet(isPresented: $showImagePicker) {
+        .fullScreenCover(item: $pendingPicker) { src in
             ImagePicker(
-                source: imagePickerSource == .camera ? .camera : .library,
+                source: src == .camera ? .camera : .library,
                 image: $pickedImage
             )
+            .ignoresSafeArea()
         }
         .onChange(of: pickedImage) { image in
             guard let img = image else { return }
             onImagePicked(img)
             pickedImage = nil
+        }
+        .alert("Camera Access Needed", isPresented: $showCameraSettingsAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("To take a photo for your quest, allow camera access in Settings.")
         }
     }
 
@@ -279,7 +292,6 @@ struct FloatingTabBar: View {
         let spacing: CGFloat = 8
         HStack(spacing: spacing) {
             Button {
-                print("❌ X tapped")
                 let generator = UIImpactFeedbackGenerator(style: .heavy)
                 generator.impactOccurred()
                 // Don't wrap in withAnimation — the NavigationStack pop has its own
@@ -295,12 +307,9 @@ struct FloatingTabBar: View {
             .buttonStyle(.plain)
 
             Button {
-                print("📷 Photo library tapped")
                 let generator = UIImpactFeedbackGenerator(style: .heavy)
                 generator.impactOccurred()
-                imagePickerSource = .photoLibrary
-                showImagePicker = true
-                print("📷 showImagePicker now \(showImagePicker)")
+                pendingPicker = .library
             } label: {
                 Image(systemName: "photo.on.rectangle")
                     .font(.system(size: 20, weight: .semibold))
@@ -311,7 +320,6 @@ struct FloatingTabBar: View {
             .buttonStyle(.plain)
 
             Button {
-                print("📸 Capture tapped (button)")
                 let generator = UIImpactFeedbackGenerator(style: .heavy)
                 generator.impactOccurred()
                 requestCameraThenPresent()
@@ -377,28 +385,27 @@ struct FloatingTabBar: View {
 
     private func requestCameraThenPresent() {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
-        print("📸 Capture tapped, camera auth status: \(status.rawValue)")
         switch status {
         case .authorized:
-            print("📸 authorized → opening camera")
-            imagePickerSource = .camera
-            showImagePicker = true
+            guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+                showCameraSettingsAlert = true
+                return
+            }
+            pendingPicker = .camera
         case .notDetermined:
-            print("📸 notDetermined → requesting access")
             AVCaptureDevice.requestAccess(for: .video) { granted in
-                print("📸 access result: \(granted)")
                 DispatchQueue.main.async {
-                    imagePickerSource = granted && UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
-                    showImagePicker = true
+                    if granted && UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        pendingPicker = .camera
+                    } else {
+                        showCameraSettingsAlert = true
+                    }
                 }
             }
         case .denied, .restricted:
-            print("📸 denied/restricted → photo library")
-            imagePickerSource = .photoLibrary
-            showImagePicker = true
+            showCameraSettingsAlert = true
         @unknown default:
-            imagePickerSource = .photoLibrary
-            showImagePicker = true
+            showCameraSettingsAlert = true
         }
     }
 
@@ -482,7 +489,6 @@ struct FloatingTabBar: View {
             // Buttons row: View Quest + Navigate
             HStack(spacing: 8) {
                 Button {
-                    print("🎯 View Quest tapped — quest.id=\(quest.id ?? "nil"), title=\(quest.title)")
                     let generator = UIImpactFeedbackGenerator(style: .heavy)
                     generator.impactOccurred()
                     let q = quest
@@ -495,13 +501,7 @@ struct FloatingTabBar: View {
                     Text("View Quest")
                         .font(.callout)
                         .fontWeight(.semibold)
-                        // Light mode: black text (more contrast on the
-                        // lighter pill). Dark mode: keep CougarBlue.
-                        .foregroundColor(Color(UIColor { trait in
-                            trait.userInterfaceStyle == .dark
-                                ? (UIColor(named: "CougarBlue") ?? .systemBlue)
-                                : .black
-                        }))
+                        .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
                         // Light mode: near-white glass tint (lighter than
@@ -642,18 +642,11 @@ struct ContentView: View {
     @State private var uploadError: String? = nil
 
     private func handleDeepLinkQuest(id: String) {
-        print("🔗 handleDeepLinkQuest fetching id=\(id)")
         // Fetch the quest by id and open it on the QuestsView path so the
         // sheet UI we already have for this kicks in.
         Firestore.firestore().collection("quests").document(id).getDocument { snapshot, error in
-            if let error = error {
-                print("🔗 quest fetch error:", error.localizedDescription)
-                return
-            }
-            guard let snapshot = snapshot, snapshot.exists else {
-                print("🔗 quest doc does not exist for id=\(id)")
-                return
-            }
+            if error != nil { return }
+            guard let snapshot = snapshot, snapshot.exists else { return }
             // Try Codable decode first (the @DocumentID path); fall back to
             // manual field extraction if that fails so a single missing
             // field doesn't kill the deep link.
@@ -661,7 +654,6 @@ struct ContentView: View {
             if let decoded = try? snapshot.data(as: Quest.self) {
                 quest = decoded
             } else if let data = snapshot.data() {
-                print("🔗 Codable decode failed; falling back to manual field read")
                 quest = Quest(
                     id: snapshot.documentID,
                     title: data["title"] as? String ?? "",
@@ -674,11 +666,9 @@ struct ContentView: View {
                     completedAt: (data["completedAt"] as? Timestamp)?.dateValue()
                 )
             } else {
-                print("🔗 quest data() returned nil")
                 return
             }
             DispatchQueue.main.async {
-                print("🔗 routing to HomeView NavStack for \(quest.title)")
                 // Open in full QuestView via HomeView's NavigationStack
                 // (not the sheet on QuestsView) — deep links from outside
                 // the app should land on the immersive view, not a card.
@@ -694,33 +684,28 @@ struct ContentView: View {
 
     private func uploadPhoto(_ image: UIImage, for quest: Quest) {
         guard let uid = Auth.auth().currentUser?.uid else {
-            print("‼️ upload aborted: no auth uid")
             uploadError = "You must be signed in to upload."
             return
         }
         // Path uses .jpg (matching the JPEG data we encode below).
         let storagePath = "\(uid)/\(quest.id ?? quest.title)/photo.jpg"
         guard let data = image.jpegData(compressionQuality: 0.8) else {
-            print("‼️ upload aborted: jpegData returned nil")
             uploadError = "Could not encode the image. Try again."
             return
         }
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
-        print("🚀 starting upload: path=\(storagePath), bytes=\(data.count), contentType=image/jpeg")
         morphState.isUploading = true
         Storage.storage().reference().child(storagePath).putData(data, metadata: metadata) { metadata, error in
             if let error = error {
                 let nsErr = error as NSError
                 let detail = "[\(nsErr.domain) \(nsErr.code)] \(error.localizedDescription)"
-                print("‼️ upload failed:", detail)
                 DispatchQueue.main.async {
                     morphState.isUploading = false
                     uploadError = "Upload failed.\n\(detail)\n\nIf this persists, check Firebase Storage rules allow writes to \(storagePath)."
                 }
                 return
             }
-            print("🚀 upload succeeded, metadata=\(String(describing: metadata))")
             let userRef = Firestore.firestore().collection("users").document(uid)
             Firestore.firestore().runTransaction({ txn, _ in
                 txn.updateData(
@@ -798,7 +783,6 @@ struct ContentView: View {
                 uploadPhoto(image, for: quest)
             },
             onPresentQuestSheet: { quest in
-                print("🎯 ContentView received present, setting sheetQuest, current=\(String(describing: sheetQuest?.id))")
                 sheetQuest = quest
             }
         )
@@ -828,9 +812,7 @@ struct ContentView: View {
                     .allowsHitTesting(false)
             )
             .overlay(bottomOverlay, alignment: .bottom)
-            .sheet(item: $sheetQuest, onDismiss: {
-                // If user swipes the sheet down (rather than tapping X),
-                // make sure morphState gets cleared too.
+            .fullScreenCover(item: $sheetQuest, onDismiss: {
                 if !morphState.isComplete {
                     morphState.quest = nil
                 }
@@ -840,13 +822,9 @@ struct ContentView: View {
             .onChange(of: morphState.quest?.id) { newId in
                 // Backup: if morphState.quest is cleared (e.g. by upload completion
                 // auto-dismiss), make sure sheetQuest follows.
-                print("🎯 onChange morphState.quest?.id = \(newId ?? "nil")")
                 if newId == nil, sheetQuest != nil {
                     sheetQuest = nil
                 }
-            }
-            .onChange(of: sheetQuest?.id) { newId in
-                print("🎯 onChange sheetQuest?.id = \(newId ?? "nil")")
             }
             .onChange(of: selectedTab) { newTab in
                 if newTab != .quests {
@@ -884,7 +862,6 @@ struct ContentView: View {
             // .onChange when the @Published is set during a callback chain
             // (.onOpenURL, .onContinueUserActivity).
             .onReceive(deepLink.$pendingQuestId.compactMap { $0 }) { id in
-                print("🔗 ContentView received pendingQuestId=\(id)")
                 handleDeepLinkQuest(id: id)
             }
     }
@@ -898,9 +875,9 @@ struct QuestSheetView: View {
     @ObservedObject private var morphState = MorphState.shared
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showImagePicker = false
-    @State private var imagePickerSource: UIImagePickerController.SourceType = .photoLibrary
+    @State private var pendingPicker: PendingImagePicker? = nil
     @State private var pickedImage: UIImage?
+    @State private var showCameraSettingsAlert = false
 
     private var sheetSafeAreaBottom: CGFloat {
         UIApplication.shared.connectedScenes
@@ -937,14 +914,11 @@ struct QuestSheetView: View {
                     dismiss()
                 },
                 onPhotoLibrary: {
-                    print("📷 [sheet] Photo library tapped")
                     let g = UIImpactFeedbackGenerator(style: .heavy)
                     g.impactOccurred()
-                    imagePickerSource = .photoLibrary
-                    showImagePicker = true
+                    pendingPicker = .library
                 },
                 onCapture: {
-                    print("📸 [sheet] Capture tapped")
                     let g = UIImpactFeedbackGenerator(style: .heavy)
                     g.impactOccurred()
                     requestCameraThenPresent()
@@ -958,11 +932,12 @@ struct QuestSheetView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 6)
         }
-        .sheet(isPresented: $showImagePicker) {
+        .fullScreenCover(item: $pendingPicker) { src in
             ImagePicker(
-                source: imagePickerSource == .camera ? .camera : .library,
+                source: src == .camera ? .camera : .library,
                 image: $pickedImage
             )
+            .ignoresSafeArea()
         }
         .onChange(of: pickedImage) { image in
             guard let img = image else { return }
@@ -971,28 +946,41 @@ struct QuestSheetView: View {
             // Keep the sheet up so the morph bar can show "Uploading…" / "Quest Complete!"
             // The parentUpload will set morphState.quest = nil on completion, dismissing.
         }
+        .alert("Camera Access Needed", isPresented: $showCameraSettingsAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("To take a photo for your quest, allow camera access in Settings.")
+        }
     }
 
     private func requestCameraThenPresent() {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
-        print("📸 [sheet] camera auth status: \(status.rawValue)")
         switch status {
         case .authorized:
-            imagePickerSource = .camera
-            showImagePicker = true
+            guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+                showCameraSettingsAlert = true
+                return
+            }
+            pendingPicker = .camera
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { granted in
                 DispatchQueue.main.async {
-                    imagePickerSource = granted && UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
-                    showImagePicker = true
+                    if granted && UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        pendingPicker = .camera
+                    } else {
+                        showCameraSettingsAlert = true
+                    }
                 }
             }
         case .denied, .restricted:
-            imagePickerSource = .photoLibrary
-            showImagePicker = true
+            showCameraSettingsAlert = true
         @unknown default:
-            imagePickerSource = .photoLibrary
-            showImagePicker = true
+            showCameraSettingsAlert = true
         }
     }
 }

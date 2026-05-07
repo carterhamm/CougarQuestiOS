@@ -59,7 +59,6 @@ struct AddQuestView: View {
 
       Section {
         Button {
-          print("✏️ Save tapped")
           saveQuest()
         } label: {
           HStack {
@@ -104,10 +103,7 @@ struct AddQuestView: View {
       completedAt: nil
     )
     FirebaseService.shared.addQuest(q, photo: image) { error in
-      if let err = error {
-        print("❌ addQuest failed:", err.localizedDescription)
-      } else {
-        print("✅ addQuest succeeded!")
+      if error == nil {
         presentationMode.wrappedValue.dismiss()
       }
     }
@@ -124,6 +120,7 @@ struct AddQuestView: View {
 struct ImagePicker: UIViewControllerRepresentable {
     enum Source { case library, camera }
     let source: Source
+    var cameraDevice: UIImagePickerController.CameraDevice = .front
     @Binding var image: UIImage?
     @Environment(\.presentationMode) private var presentationMode
 
@@ -131,11 +128,16 @@ struct ImagePicker: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
-        picker.delegate   = context.coordinator
-        picker.sourceType = (source == .camera &&
-                             UIImagePickerController.isSourceTypeAvailable(.camera))
-                            ? .camera
-                            : .photoLibrary
+        picker.delegate = context.coordinator
+        if source == .camera && UIImagePickerController.isSourceTypeAvailable(.camera) {
+            picker.sourceType = .camera
+            picker.modalPresentationStyle = .fullScreen
+            if UIImagePickerController.isCameraDeviceAvailable(cameraDevice) {
+                picker.cameraDevice = cameraDevice
+            }
+        } else {
+            picker.sourceType = .photoLibrary
+        }
         return picker
     }
 

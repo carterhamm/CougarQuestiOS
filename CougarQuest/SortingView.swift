@@ -27,9 +27,7 @@ struct SortingView: View {
                         do {
                             try Auth.auth().signOut()
                             authVM.isSignedIn = false
-                        } catch {
-                            print("Failed to sign out: \(error)")
-                        }
+                        } catch {}
                     }) {
                         Label("Log Out", systemImage: "arrow.backward.circle")
                             .foregroundColor(.red)

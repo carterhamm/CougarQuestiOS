@@ -41,10 +41,8 @@ class FirebaseService {
                 userRef.setData(updateData, merge: true)
                 
                 // Fetch and save FCM token for push notifications
-                Messaging.messaging().token { token, error in
-                    if let error = error {
-                        print("❌ FCM token error:", error.localizedDescription)
-                    } else if let token = token {
+                Messaging.messaging().token { token, _ in
+                    if let token = token {
                         userRef.updateData(["fcmToken": token])
                     }
                 }
@@ -61,17 +59,11 @@ class FirebaseService {
                 if let displayName = user.displayName, !displayName.isEmpty {
                     newData["name"] = displayName
                 }
-                userRef.setData(newData, merge: true) { error in
-                    if let error = error {
-                        print("❌ Failed to create user profile:", error.localizedDescription)
-                    }
-                }
+                userRef.setData(newData, merge: true)
                 
                 // Fetch and save FCM token for push notifications
-                Messaging.messaging().token { token, error in
-                    if let error = error {
-                        print("❌ FCM token error:", error.localizedDescription)
-                    } else if let token = token {
+                Messaging.messaging().token { token, _ in
+                    if let token = token {
                         userRef.updateData(["fcmToken": token])
                     }
                 }
@@ -309,9 +301,7 @@ class ProfileViewModel: ObservableObject {
             
             // 5) Notify auth state
             authVM.isSignedIn = false
-        } catch {
-            print("Sign out error: \(error.localizedDescription)")
-        }
+        } catch {}
     }
     
     var isFormValid: Bool {

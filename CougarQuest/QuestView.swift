@@ -116,10 +116,7 @@ struct QuestView: View {
         let storageRef = Storage.storage().reference().child("\(uid)/\(quest.id ?? quest.title)/photo.png")
         guard let imageData = image.jpegData(compressionQuality: 0.8) else { return }
         storageRef.putData(imageData, metadata: nil) { _, error in
-            if let error = error {
-                print("Upload error: \(error)")
-                return
-            }
+            if error != nil { return }
             // After upload, mark quest complete
             Firestore.firestore().collection("users").document(uid)
                 .updateData(["completedQuests": FieldValue.arrayUnion([quest.title])]) { error in
@@ -418,7 +415,7 @@ struct QuestView: View {
                     ) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                     }
                 }
             }

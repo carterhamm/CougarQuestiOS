@@ -26,20 +26,14 @@ class NotificationService {
         firestore.collection("users")
             .whereField("fcmToken", isNotEqualTo: "")
             .getDocuments { snapshot, error in
-                if let error = error {
-                    print("❌ Error fetching users for notification:", error.localizedDescription)
-                    return
-                }
-                
+                if error != nil { return }
+
                 let tokens = snapshot?.documents.compactMap { doc in
                     doc.data()["fcmToken"] as? String
                 } ?? []
-                
-                guard !tokens.isEmpty else {
-                    print("ℹ️ No FCM tokens found, skipping notification.")
-                    return
-                }
-                
+
+                guard !tokens.isEmpty else { return }
+
                 // 2) Build FCM payload
                 let payload: [String: Any] = [
                     "registration_ids": tokens,
@@ -48,37 +42,22 @@ class NotificationService {
                         "body": body
                     ]
                 ]
-                
+
                 // 3) Send HTTP request to FCM legacy endpoint
-                guard let url = URL(string: "https://fcm.googleapis.com/fcm/send") else {
-                    print("❌ Invalid FCM URL.")
-                    return
-                }
-                
+                guard let url = URL(string: "https://fcm.googleapis.com/fcm/send") else { return }
+
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("key=\(self.serverKey)", forHTTPHeaderField: "Authorization")
-                
+
                 do {
                     request.httpBody = try JSONSerialization.data(withJSONObject: payload, options: [])
                 } catch {
-                    print("❌ Failed to encode FCM payload:", error.localizedDescription)
                     return
                 }
-                
-                let task = URLSession.shared.dataTask(with: request) { data, response, error in
-                    if let error = error {
-                        print("❌ Notification send error:", error.localizedDescription)
-                        return
-                    }
-                    if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
-                        print("❌ FCM responded with status code:", httpResp.statusCode)
-                    } else {
-                        print("✅ Notification sent to \(tokens.count) users.")
-                    }
-                }
-                task.resume()
+
+                URLSession.shared.dataTask(with: request) { _, _, _ in }.resume()
             }
     }
 }
