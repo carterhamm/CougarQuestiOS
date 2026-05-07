@@ -1,4 +1,4 @@
-🐾 CougarQuest iOS
+🐾 **CougarQuest iOS**
 
 Welcome to CougarQuest iOS, the official mobile companion app for BYU Sports Camps! 📱 Designed specifically for campers, this sleek, easy-to-use app provides an interactive experience by engaging users in exciting challenges, competitions, and activities. Keep track of your quests, monitor your progress, and see where you rank among your peers, all from your iOS device!
 
