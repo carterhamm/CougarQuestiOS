@@ -821,48 +821,38 @@ struct ContentView: View {
         }
     }
 
+    /// No TabView. iOS 26's new floating tab bar can't be reliably suppressed
+    /// (`.toolbar(.hidden, for: .tabBar)` is unreliable, and the new bar
+    /// isn't a `UITabBarController` so UIKit shims can't reach it either).
+    /// Switch-based mount = no TabView = no system tab bar, period.
+    /// Trade-off: a tab's local state (nav stack, scroll position) resets on
+    /// switch. Shared state (LeaderboardViewModel.shared, MorphState.shared,
+    /// Firestore listeners) survives. Acceptable for this app.
     @ViewBuilder
     private var mainContent: some View {
-        TabView(selection: $selectedTab) {
-            HomeView(selectedQuest: $selectedQuest)
-                .tag(TabItem.home)
-                .toolbar(.hidden, for: .tabBar)
-
-            NavigationStack {
-                QuestsView(selectedQuest: $selectedQuest)
-                    .toolbar(.hidden, for: .tabBar)
-            }
-            .tag(TabItem.quests)
-            .toolbar(.hidden, for: .tabBar)
-
-            NavigationStack {
-                LeaderboardView()
-                    .toolbar(.hidden, for: .tabBar)
-            }
-            .tag(TabItem.leaderboard)
-            .toolbar(.hidden, for: .tabBar)
-
-            NavigationStack {
-                if profileVM.isAdmin {
-                    SortingView()
-                        .toolbar(.hidden, for: .tabBar)
-                } else {
-                    ProfileView()
-                        .toolbar(.hidden, for: .tabBar)
+        Group {
+            switch selectedTab {
+            case .home:
+                HomeView(selectedQuest: $selectedQuest)
+            case .quests:
+                NavigationStack {
+                    QuestsView(selectedQuest: $selectedQuest)
+                }
+            case .leaderboard:
+                NavigationStack {
+                    LeaderboardView()
+                }
+            case .profile:
+                NavigationStack {
+                    if profileVM.isAdmin {
+                        SortingView()
+                    } else {
+                        ProfileView()
+                    }
                 }
             }
-            .tag(TabItem.profile)
-            .toolbar(.hidden, for: .tabBar)
         }
-        .toolbar(.hidden, for: .tabBar)
-        // Belt-and-suspenders: iOS 26's new floating tab bar isn't always
-        // suppressed by .toolbar(.hidden, for: .tabBar) — especially when
-        // the keyboard rises (it can re-show). This UIKit shim walks up the
-        // responder chain to the host UITabBarController and force-hides
-        // its tab bar view directly. Re-applied on every keyboard change.
-        .background(ForceHideUITabBar(trigger: keyboard.isVisible))
         .onAppear {
-            UITabBar.appearance().isHidden = true
             LeaderboardViewModel.shared.prefetchIfNeeded()
         }
     }
@@ -1177,40 +1167,5 @@ struct ContentView_Previews: PreviewProvider {
             .environmentObject(AuthViewModel())
             .environmentObject(ProfileViewModel())
             .previewDevice("iPhone 14")
-    }
-}
-
-/// Walks the host view's responder chain to find the parent
-/// `UITabBarController` and forces its tab bar hidden. Necessary on iOS 26
-/// because `.toolbar(.hidden, for: .tabBar)` doesn't reliably suppress the
-/// new Liquid Glass tab bar — particularly when the keyboard rises and the
-/// system tries to reposition it. The `trigger` value forces SwiftUI to
-/// re-call `updateUIView` whenever it changes (e.g. on keyboard show/hide).
-private struct ForceHideUITabBar: UIViewRepresentable {
-    let trigger: Bool
-
-    func makeUIView(context: Context) -> UIView {
-        let v = UIView()
-        v.backgroundColor = .clear
-        v.isUserInteractionEnabled = false
-        return v
-    }
-
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            hideTabBar(from: uiView)
-        }
-    }
-
-    private func hideTabBar(from view: UIView) {
-        var responder: UIResponder? = view
-        while let r = responder {
-            if let tbc = r as? UITabBarController {
-                tbc.tabBar.isHidden = true
-                tbc.setValue(true, forKey: "_hidesShadow")
-                return
-            }
-            responder = r.next
-        }
     }
 }

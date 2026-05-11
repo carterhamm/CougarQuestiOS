@@ -86,8 +86,8 @@ struct ProfileView: View {
                             Label("Delete Account", systemImage: "trash")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .foregroundColor(.cougarBlue)
+                        Image(systemName: "ellipsis")
+                            .foregroundColor(colorScheme == .dark ? .white : .cougarBlue)
                     }
                 }
             }
