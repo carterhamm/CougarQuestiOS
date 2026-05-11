@@ -328,7 +328,10 @@ struct SignInView: View {
                         }
                     } else {
                         // New user → write email/name fields to Firestore, then send to registration flow
-                        var newFields: [String: Any] = ["email": email]
+                        var newFields: [String: Any] = [
+                            "email": email,
+                            "createdAt": FieldValue.serverTimestamp()
+                        ]
                         if !fullNameFinal.isEmpty {
                             newFields["name"] = fullNameFinal
                         }

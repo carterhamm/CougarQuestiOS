@@ -22,6 +22,8 @@ struct ProfileView: View {
     @State private var editingTeamName = false
     @State private var points: Int = 0
     @State private var showLogOutConfirm = false
+    @State private var showDeleteAccountConfirm = false
+    @State private var deleteError: String?
 
     private enum EditFocus: Hashable { case name, phone, son(Int), teamName }
     @FocusState private var focusedField: EditFocus?
@@ -67,6 +69,28 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Menu {
+                        Button {
+                            if let url = URL(string: "mailto:support@cougarquest.com?subject=CougarQuest%20Support") {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            Label("Help & Support", systemImage: "questionmark.circle")
+                        }
+                        Divider()
+                        Button(role: .destructive) {
+                            showDeleteAccountConfirm = true
+                        } label: {
+                            Label("Delete Account", systemImage: "trash")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundColor(.cougarBlue)
+                    }
+                }
+            }
             .onAppear {
                 viewModel.load()
                 fetchPoints()
@@ -78,6 +102,46 @@ struct ProfileView: View {
                 }
             } message: {
                 Text("You'll need to sign back in to see your quests and points.")
+            }
+            .alert("Delete your account?", isPresented: $showDeleteAccountConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    deleteAccount()
+                }
+            } message: {
+                Text("This permanently removes your profile, points, and quest history. This cannot be undone.")
+            }
+            .alert("Couldn't delete account", isPresented: Binding(
+                get: { deleteError != nil },
+                set: { if !$0 { deleteError = nil } }
+            ), presenting: deleteError) { _ in
+                Button("OK", role: .cancel) { deleteError = nil }
+            } message: { msg in
+                Text(msg)
+            }
+        }
+    }
+
+    /// Hard-deletes the user's Firestore profile and Auth record.
+    /// Apple App Store guidelines require this to be available in-app.
+    private func deleteAccount() {
+        guard let user = Auth.auth().currentUser else { return }
+        let uid = user.uid
+        let firestore = Firestore.firestore()
+        firestore.collection("users").document(uid).delete { firestoreErr in
+            if let firestoreErr = firestoreErr {
+                deleteError = "Profile delete failed: \(firestoreErr.localizedDescription)"
+                return
+            }
+            user.delete { authErr in
+                DispatchQueue.main.async {
+                    if let authErr = authErr {
+                        // Apple may require recent re-auth for delete — surface that clearly.
+                        deleteError = "Auth delete failed: \(authErr.localizedDescription). Please sign out and sign back in, then try again."
+                        return
+                    }
+                    authVM.isSignedIn = false
+                }
             }
         }
     }
@@ -529,7 +593,12 @@ struct ProfileView: View {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         Firestore.firestore().collection("users").document(uid).getDocument { snapshot, _ in
             DispatchQueue.main.async {
-                points = snapshot?.data()?["points"] as? Int ?? 0
+                // Per-season points (current season only). Falls back to the
+                // legacy total for users whose docs haven't been backfilled.
+                let data = snapshot?.data()
+                points = (data?["currentSeasonPoints"] as? Int)
+                    ?? (data?["points"] as? Int)
+                    ?? 0
             }
         }
     }

@@ -328,13 +328,13 @@ struct HomeView: View {
                             updateBlock()
                         }
                     }
-                // Fetch user name for greeting
-                let userRef = Firestore.firestore().collection("users").document(uid)
-                userRef.getDocument { snapshot, _ in
+                // Compute greeting locally — purely date-based, no need to
+                // wait on a Firestore round-trip (which would block the UI in
+                // airplane mode / poor connectivity).
+                if greeting.isEmpty {
                     let weekday = DateFormatter().weekdaySymbols[
                         Calendar.current.component(.weekday, from: Date()) - 1
                     ]
-                    // Remove personalized name; use general greetings
                     let hour = Calendar.current.component(.hour, from: Date())
                     let timeOfDayGreeting: String
                     switch hour {
@@ -343,15 +343,12 @@ struct HomeView: View {
                     case 17..<22: timeOfDayGreeting = "Good evening!"
                     default: timeOfDayGreeting = "Hello!"
                     }
-                    let weekdayGreeting = "Happy \(weekday)!"
                     let options = [
                         "Welcome!",
-                        weekdayGreeting,
+                        "Happy \(weekday)!",
                         timeOfDayGreeting
                     ]
-                    DispatchQueue.main.async {
-                        greeting = options.randomElement()!
-                    }
+                    greeting = options.randomElement() ?? "Welcome!"
                 }
             }
         }

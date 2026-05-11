@@ -150,6 +150,7 @@ struct RegisterView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .disabled(phoneNumber.filter { $0.isNumber }.count < 10)
@@ -179,6 +180,7 @@ struct RegisterView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .disabled(otpCode.count < 6)

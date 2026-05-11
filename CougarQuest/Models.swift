@@ -33,10 +33,16 @@ class FirebaseService {
         // Only initialize completedQuests for new users
         userRef.getDocument { snapshot, error in
             if let snapshot = snapshot, snapshot.exists {
-                // Existing user: update only mutable fields
+                // Existing user: update only mutable fields. Backfill the
+                // currentSeasonPoints field if it's missing (returning users
+                // from prior seasons won't have it — initialize at 0 so the
+                // leaderboard query returns them).
                 var updateData: [String: Any] = ["phoneNumber": user.phoneNumber ?? ""]
                 if let displayName = user.displayName, !displayName.isEmpty {
                     updateData["name"] = displayName
+                }
+                if (snapshot.data()?["currentSeasonPoints"]) == nil {
+                    updateData["currentSeasonPoints"] = 0
                 }
                 userRef.setData(updateData, merge: true)
                 
@@ -47,14 +53,18 @@ class FirebaseService {
                     }
                 }
             } else {
-                // New user: set all default fields including completedQuests
+                // New user: set all default fields including completedQuests.
+                // Stamp createdAt with the server timestamp — used for season
+                // filtering (returning users from prior years won't have it).
                 var newData: [String: Any] = [
                     "uid": user.uid,
                     "phoneNumber": user.phoneNumber ?? "",
                     "sons": [] as [String],
                     "points": 0,
+                    "currentSeasonPoints": 0,
                     "completedQuests": [] as [String],
-                    "isAdmin": false
+                    "isAdmin": false,
+                    "createdAt": FieldValue.serverTimestamp()
                 ]
                 if let displayName = user.displayName, !displayName.isEmpty {
                     newData["name"] = displayName
@@ -213,6 +223,8 @@ struct UserProfile: Identifiable, Codable {
   var completedQuests: [String]      // array of quest IDs
   var teamName: String?
   var grandpa: String?
+  var createdAt: Date?               // set on first profile write — used for
+                                     // season filtering / cohort analytics
 }
 
 //AuthView Model, formerly in CougarQuestApp
@@ -291,7 +303,8 @@ class ProfileViewModel: ObservableObject {
     
     func save(completion: @escaping (Error?) -> Void) {
         guard let userId = Auth.auth().currentUser?.uid else { return }
-        let data: [String: Any] = [
+        let userRef = db.collection("users").document(userId)
+        let baseData: [String: Any] = [
             "name": name,
             "firstName": firstName,
             "lastName": lastName,
@@ -300,8 +313,17 @@ class ProfileViewModel: ObservableObject {
             "teamName": teamName,
             "grandpa": grandpa,
         ]
-        db.collection("users").document(userId).setData(data, merge: true) { error in
-            completion(error)
+        // Stamp createdAt only if the doc doesn't already have one — first
+        // write wins. Server timestamp is authoritative.
+        userRef.getDocument { snapshot, _ in
+            var data = baseData
+            let alreadyHasCreatedAt = (snapshot?.data()?["createdAt"]) != nil
+            if !alreadyHasCreatedAt {
+                data["createdAt"] = FieldValue.serverTimestamp()
+            }
+            userRef.setData(data, merge: true) { error in
+                completion(error)
+            }
         }
     }
     

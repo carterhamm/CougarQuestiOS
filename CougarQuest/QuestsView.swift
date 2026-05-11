@@ -96,6 +96,26 @@ struct QuestsView: View {
                     .ignoresSafeArea(edges: .top),
                 alignment: .top
             )
+            .overlay(
+                Group {
+                    if quests.isEmpty {
+                        VStack(spacing: 10) {
+                            Image(systemName: "map")
+                                .font(.largeTitle)
+                                .foregroundColor(.secondary)
+                            Text("No quests on the map yet")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Text("New quests appear here as they're posted.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(20)
+                        .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 18))
+                        .padding(.horizontal, 32)
+                    }
+                }
+            )
             .onAppear {
                 FirebaseService.shared.fetchQuests { fetched, _ in
                     quests = fetched ?? []

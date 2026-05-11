@@ -132,7 +132,10 @@ struct QuestView: View {
                             reward = 1   // 1 point thereafter
                         }
                         Firestore.firestore().collection("users").document(uid)
-                            .updateData(["points": FieldValue.increment(reward)]) { _ in }
+                            .updateData([
+                                "points": FieldValue.increment(reward),
+                                "currentSeasonPoints": FieldValue.increment(reward)
+                            ]) { _ in }
                         withAnimation(.easeInOut) {
                             isCompleted = true
                             let generator = UIImpactFeedbackGenerator(style: .heavy)

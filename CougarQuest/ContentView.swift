@@ -168,17 +168,12 @@ struct FloatingTabBar: View {
             // Background pill — subtle CougarBlue tint when expanded so the
             // description text below has enough contrast to read against
             // arbitrary map content peeking through the glass.
-            // During drag mode, fade this so the active pill's refraction
-            // reads through to the actual content behind the bar instead of
-            // picking up the bar's own glass material as a gray haze.
             Color.clear
                 .frame(height: capsuleHeight)
                 .adaptiveGlassEffectTinted(
                     color: isExpanded ? Color.cougarBlue.opacity(0.18) : Color.clear,
                     in: RoundedRectangle(cornerRadius: 50)
                 )
-                .opacity(isDraggingTabPill ? 0.35 : 1.0)
-                .animation(.spring(response: 0.32, dampingFraction: 0.7), value: isDraggingTabPill)
                 .allowsHitTesting(false)
 
             if selectedTab == .quests, let quest = selectedQuest {
@@ -242,14 +237,16 @@ struct FloatingTabBar: View {
             let minDragX: CGFloat = -baseX
             let maxDragX: CGFloat = (geo.size.width - 6) - (baseX + cellWidth)
 
-            // Drag mode is loud — big lift, very loose damping for visible
-            // wobble, fast response so the elasticity reads.
+            // Drag pill: separate X/Y lift so we can tune width and height
+            // independently. ~8% less max width and ~10% more max height
+            // than the previous symmetric 1.45 lift.
             let pillBaseHeight: CGFloat = 56
-            let liftScale: CGFloat = isDraggingTabPill ? 1.8 : 1.0
-            let velocityNorm = max(-1, min(1, tabDragVelocity / 950))
+            let liftScaleX: CGFloat = isDraggingTabPill ? 1.34 : 1.0
+            let liftScaleY: CGFloat = isDraggingTabPill ? 1.6 : 1.0
+            let velocityNorm = max(-1, min(1, tabDragVelocity / 700))
             let speedAbs = abs(velocityNorm)
             let stretchX: CGFloat = isDraggingTabPill ? (1 + speedAbs * 0.4) : 1.0
-            let squashY: CGFloat = isDraggingTabPill ? (1 - speedAbs * 0.42) : 1.0
+            let squashY: CGFloat = isDraggingTabPill ? (1 - speedAbs * 0.4) : 1.0
 
             ZStack(alignment: .leading) {
                 // Active pill — sits BELOW the icons at rest (so the white
@@ -272,16 +269,16 @@ struct FloatingTabBar: View {
                         .mask(
                             ZStack {
                                 RoundedRectangle(cornerRadius: 50, style: .continuous)
-                                    .strokeBorder(Color.white, lineWidth: 18)
-                                    .blur(radius: 11)
+                                    .strokeBorder(Color.white, lineWidth: 11)
+                                    .blur(radius: 7)
                                 RoundedRectangle(cornerRadius: 50, style: .continuous)
-                                    .strokeBorder(Color.white, lineWidth: 3)
+                                    .strokeBorder(Color.white, lineWidth: 2)
                             }
                         )
                         .opacity(isDraggingTabPill ? 1 : 0)
                 }
                 .shadow(color: Color.cougarBlue.opacity(isDraggingTabPill ? 0.55 : 0.25), radius: isDraggingTabPill ? 32 : 15, x: 0, y: isDraggingTabPill ? 12 : 5)
-                .scaleEffect(x: liftScale * stretchX, y: liftScale * squashY, anchor: .center)
+                .scaleEffect(x: liftScaleX * stretchX, y: liftScaleY * squashY, anchor: .center)
                 .offset(x: baseX + tabDragX)
                 .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.65), value: tabDragX)
                 .animation(.spring(response: 0.55, dampingFraction: 0.42), value: selectedTab)
@@ -562,9 +559,6 @@ struct FloatingTabBar: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .adaptiveGlassEffectTinted(
-                    // Light mode: lighter near-white tint so the card pops
-                    // against the photo banner. Dark mode: keep the darker
-                    // black tint we had.
                     color: Color(UIColor { trait in
                         trait.userInterfaceStyle == .dark
                             ? UIColor.black.withAlphaComponent(0.45)
@@ -803,7 +797,10 @@ struct ContentView: View {
                     forDocument: userRef
                 )
                 let reward = Date().timeIntervalSince(quest.createdAt ?? Date()) <= 12*3600 ? 10 : 5
-                txn.updateData(["points": FieldValue.increment(Int64(reward))], forDocument: userRef)
+                txn.updateData([
+                    "points": FieldValue.increment(Int64(reward)),
+                    "currentSeasonPoints": FieldValue.increment(Int64(reward))
+                ], forDocument: userRef)
                 return nil
             }) { _, _ in }
             DispatchQueue.main.async {

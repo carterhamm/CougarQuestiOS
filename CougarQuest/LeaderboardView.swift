@@ -26,8 +26,24 @@ struct LeaderboardView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     if viewModel.users.isEmpty {
-                        ProgressView()
-                            .padding(.top, 60)
+                        if viewModel.hasLoaded {
+                            VStack(spacing: 12) {
+                                Image(systemName: "trophy")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.secondary)
+                                Text("No players yet this season")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Text("Complete a quest to claim the first spot.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(.top, 80)
+                        } else {
+                            ProgressView()
+                                .padding(.top, 60)
+                        }
                     } else {
                         if viewModel.users.count >= 1 {
                             PodiumSection(
@@ -277,9 +293,9 @@ private struct RankingRow: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(isCurrent ? Color.white.opacity(0.18) : Color.cougarBlue.opacity(0.10))
+            .adaptiveGlassEffectTinted(
+                color: isCurrent ? Color.white.opacity(0.22) : Color.cougarBlue.opacity(0.18),
+                in: Capsule()
             )
         }
         .padding(.horizontal, 14)
@@ -321,6 +337,7 @@ class LeaderboardViewModel: ObservableObject {
 
     @Published var users: [LeaderboardUser] = []
     @Published var userRank: Int?
+    @Published var hasLoaded: Bool = false   // true after first fetch completes (success or empty)
 
     private let db = Firestore.firestore()
     private var currentUID: String? { Auth.auth().currentUser?.uid }
@@ -340,13 +357,16 @@ class LeaderboardViewModel: ObservableObject {
     }
 
     func fetchLeaderboard() {
+        // Fetch all users, sort in-memory by currentSeasonPoints. We avoid
+        // Firestore's order(by:) here because it would silently drop docs
+        // that don't yet have the field — and that field is backfilled lazily
+        // via the auth listener (existing users get it on next sign-in).
         db.collection("users")
-            .order(by: "points", descending: true)
             .getDocuments { snapshot, error in
                 guard let docs = snapshot?.documents else { return }
 
                 var temp: [LeaderboardUser] = []
-                for (index, doc) in docs.enumerated() {
+                for doc in docs {
                     let data = doc.data()
                     let teamName = (data["teamName"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                     var displayName: String
@@ -377,15 +397,22 @@ class LeaderboardViewModel: ObservableObject {
                         if displayName.isEmpty { displayName = "Unnamed user" }
                     }
 
-                    let pts = data["points"] as? Int ?? 0
+                    // Per-season points; defaults to 0 for legacy docs that
+                    // haven't been touched by the new auth listener yet.
+                    let pts = data["currentSeasonPoints"] as? Int ?? 0
                     temp.append(.init(id: doc.documentID, displayName: displayName, points: pts))
-
-                    if doc.documentID == self.currentUID {
-                        DispatchQueue.main.async { self.userRank = index + 1 }
-                    }
                 }
 
-                DispatchQueue.main.async { self.users = temp }
+                temp.sort { $0.points > $1.points }
+
+                for (index, user) in temp.enumerated() where user.id == self.currentUID {
+                    DispatchQueue.main.async { self.userRank = index + 1 }
+                }
+
+                DispatchQueue.main.async {
+                    self.users = temp
+                    self.hasLoaded = true
+                }
             }
     }
 }
