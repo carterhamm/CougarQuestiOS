@@ -310,7 +310,7 @@ struct QuestView: View {
 
                         Text(quest.description)
                             .font(.body)
-                            .foregroundColor(colorScheme == .dark ? Color.white : Color.black)
+                            .foregroundColor(Color.white)
                             .multilineTextAlignment(.center)
                             .padding()
                             .frame(width: UIScreen.main.bounds.width - 25, alignment: .center)
@@ -330,7 +330,7 @@ struct QuestView: View {
                                     Text(quest.address)
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
-                                        .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
+                                        .foregroundStyle(Color.white)
                                         .multilineTextAlignment(.center)
                                         .lineLimit(1)
                                         .padding(.horizontal)

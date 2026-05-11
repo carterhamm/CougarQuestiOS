@@ -118,8 +118,24 @@ class FirebaseService {
       guard let docs = snap?.documents else {
         completion(nil, err); return
       }
-      let quests = docs.compactMap { try? $0.data(as: Quest.self) }
+      let quests = docs.map { Quest.decode(from: $0) }
       completion(quests, nil)
+    }
+  }
+
+  /// Live-updating quest listener. Returns a Firestore registration whose
+  /// `.remove()` should be called on view disappear. Auto-retries through
+  /// transient network/auth failures (unlike one-shot getDocuments) and uses
+  /// a forgiving decoder so a single malformed document doesn't drop the
+  /// whole list.
+  @discardableResult
+  func observeQuests(onUpdate: @escaping ([Quest]) -> Void) -> ListenerRegistration {
+    db.collection("quests").addSnapshotListener { snap, _ in
+      guard let docs = snap?.documents else {
+        onUpdate([])
+        return
+      }
+      onUpdate(docs.map { Quest.decode(from: $0) })
     }
   }
 
@@ -162,6 +178,27 @@ struct Quest: Identifiable, Codable {
     case title, address, description, photoURL, createdAt, completedAt
     case mapsLink
     case plusCode
+  }
+
+  /// Tolerant decoder — uses Codable when possible, falls back to manual
+  /// field extraction so a single missing field doesn't drop the whole quest.
+  /// Critical for surviving schema changes between releases.
+  static func decode(from snapshot: QueryDocumentSnapshot) -> Quest {
+    if let q = try? snapshot.data(as: Quest.self) {
+      return q
+    }
+    let data = snapshot.data()
+    return Quest(
+      id: snapshot.documentID,
+      title: data["title"] as? String ?? "",
+      address: data["address"] as? String ?? "",
+      description: data["description"] as? String ?? "",
+      mapsLink: data["mapsLink"] as? String ?? "",
+      plusCode: data["plusCode"] as? String ?? "",
+      photoURL: data["photoURL"] as? String ?? "",
+      createdAt: (data["createdAt"] as? Timestamp)?.dateValue(),
+      completedAt: (data["completedAt"] as? Timestamp)?.dateValue()
+    )
   }
 }
 

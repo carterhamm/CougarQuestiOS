@@ -20,6 +20,7 @@ struct HomeView: View {
     @State private var quests: [Quest] = []
     @State private var completedQuestTitles: [String] = []
     @State private var isLoading: Bool = true
+    @State private var questsListener: ListenerRegistration?
     @EnvironmentObject var profileVM: ProfileViewModel
     @Namespace private var namespace
     @State private var greeting: String = ""
@@ -295,11 +296,14 @@ struct HomeView: View {
             }
             .ignoresSafeArea(edges: .top)
         .onAppear {
-            FirebaseService.shared.fetchQuests { fetched, error in
-                if let fetched = fetched {
+            // Live listener — auto-retries on transient network/auth errors
+            // and uses tolerant decoding so a malformed quest doesn't blank
+            // the list.
+            if questsListener == nil {
+                questsListener = FirebaseService.shared.observeQuests { fetched in
                     self.quests = fetched
+                    self.isLoading = false
                 }
-                self.isLoading = false
             }
             if let uid = Auth.auth().currentUser?.uid {
                 Firestore.firestore().collection("users").document(uid)

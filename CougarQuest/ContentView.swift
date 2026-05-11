@@ -96,6 +96,11 @@ struct FloatingTabBar: View {
     @State private var pendingPicker: PendingImagePicker? = nil
     @State private var pickedImage: UIImage?
     @State private var showCameraSettingsAlert = false
+    @State private var tabDragX: CGFloat = 0
+    @State private var isDraggingTabPill: Bool = false
+    @State private var tabDragVelocity: CGFloat = 0  // pts/s
+    @State private var lastDragSampleX: CGFloat = 0
+    @State private var lastDragSampleTime: Date = .init()
 
     private var isMorphActive: Bool {
         // Main floating bar only morphs on the HomeView path.
@@ -163,12 +168,17 @@ struct FloatingTabBar: View {
             // Background pill — subtle CougarBlue tint when expanded so the
             // description text below has enough contrast to read against
             // arbitrary map content peeking through the glass.
+            // During drag mode, fade this so the active pill's refraction
+            // reads through to the actual content behind the bar instead of
+            // picking up the bar's own glass material as a gray haze.
             Color.clear
                 .frame(height: capsuleHeight)
                 .adaptiveGlassEffectTinted(
                     color: isExpanded ? Color.cougarBlue.opacity(0.18) : Color.clear,
                     in: RoundedRectangle(cornerRadius: 50)
                 )
+                .opacity(isDraggingTabPill ? 0.35 : 1.0)
+                .animation(.spring(response: 0.32, dampingFraction: 0.7), value: isDraggingTabPill)
                 .allowsHitTesting(false)
 
             if selectedTab == .quests, let quest = selectedQuest {
@@ -178,6 +188,10 @@ struct FloatingTabBar: View {
                     // sits exactly at the top of the bar (no 10pt gap).
                     .offset(y: -80 + dragOffset)
                     .zIndex(1)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity
+                    ))
             }
 
             ZStack {
@@ -223,14 +237,57 @@ struct FloatingTabBar: View {
         GeometryReader { geo in
             let tabs = TabItem.allCases
             let cellWidth = (geo.size.width - 12) / CGFloat(tabs.count)
+            let currentIdx = tabs.firstIndex(of: selectedTab) ?? 0
+            let baseX = 6 + cellWidth * CGFloat(currentIdx)
+            let minDragX: CGFloat = -baseX
+            let maxDragX: CGFloat = (geo.size.width - 6) - (baseX + cellWidth)
+
+            // Drag mode is loud — big lift, very loose damping for visible
+            // wobble, fast response so the elasticity reads.
+            let pillBaseHeight: CGFloat = 56
+            let liftScale: CGFloat = isDraggingTabPill ? 1.8 : 1.0
+            let velocityNorm = max(-1, min(1, tabDragVelocity / 950))
+            let speedAbs = abs(velocityNorm)
+            let stretchX: CGFloat = isDraggingTabPill ? (1 + speedAbs * 0.4) : 1.0
+            let squashY: CGFloat = isDraggingTabPill ? (1 - speedAbs * 0.42) : 1.0
 
             ZStack(alignment: .leading) {
-                Color.clear
-                    .frame(width: cellWidth, height: 56)
-                    .adaptiveGlassEffectTinted(color: Color.cougarBlue.opacity(0.9), in: RoundedRectangle(cornerRadius: 50))
-                    .shadow(color: Color.cougarBlue.opacity(0.25), radius: 15, x: 0, y: 5)
-                    .offset(x: 6 + cellWidth * CGFloat(tabs.firstIndex(of: selectedTab) ?? 0))
-                    .animation(.spring(response: 0.35, dampingFraction: 0.7), value: selectedTab)
+                // Active pill — sits BELOW the icons at rest (so the white
+                // active-tab icon shows on top of the blue glass), pops ABOVE
+                // the icons while dragging (so its magnified silhouette isn't
+                // clipped by labels).
+                ZStack {
+                    Color.clear
+                        .frame(width: cellWidth, height: pillBaseHeight)
+                        .adaptiveGlassEffectTinted(color: Color.cougarBlue.opacity(0.9), in: RoundedRectangle(cornerRadius: 50))
+                        .opacity(isDraggingTabPill ? 0 : 1)
+                    // Drag-mode pill: Liquid Glass on the rim, flush to the
+                    // outer edge. A crisp 3pt outer line guarantees full
+                    // alpha at the very edge (otherwise blur halves it),
+                    // with a wider blurred band beneath fading invisibly
+                    // inward — no visible gradient stripe.
+                    Color.clear
+                        .frame(width: cellWidth, height: pillBaseHeight)
+                        .adaptiveGlassEffect(in: RoundedRectangle(cornerRadius: 50))
+                        .mask(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 50, style: .continuous)
+                                    .strokeBorder(Color.white, lineWidth: 18)
+                                    .blur(radius: 11)
+                                RoundedRectangle(cornerRadius: 50, style: .continuous)
+                                    .strokeBorder(Color.white, lineWidth: 3)
+                            }
+                        )
+                        .opacity(isDraggingTabPill ? 1 : 0)
+                }
+                .shadow(color: Color.cougarBlue.opacity(isDraggingTabPill ? 0.55 : 0.25), radius: isDraggingTabPill ? 32 : 15, x: 0, y: isDraggingTabPill ? 12 : 5)
+                .scaleEffect(x: liftScale * stretchX, y: liftScale * squashY, anchor: .center)
+                .offset(x: baseX + tabDragX)
+                .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.65), value: tabDragX)
+                .animation(.spring(response: 0.55, dampingFraction: 0.42), value: selectedTab)
+                .animation(.spring(response: 0.4, dampingFraction: 0.4), value: isDraggingTabPill)
+                .animation(.spring(response: 0.3, dampingFraction: 0.42), value: tabDragVelocity)
+                .zIndex(isDraggingTabPill ? 2 : 0)
 
                 HStack(spacing: 0) {
                     ForEach(TabItem.allCases) { tab in
@@ -244,30 +301,63 @@ struct FloatingTabBar: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 68)
                         .contentShape(Rectangle())
-                        .onTapGesture {
-                            let generator = UIImpactFeedbackGenerator(style: .heavy)
-                            generator.impactOccurred()
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                                selectedTab = tab
-                            }
-                        }
                     }
                 }
                 .padding(.horizontal, 6)
+                .zIndex(1)
             }
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 12)
+            // High-priority drag so it wins over child taps and activates
+            // on the first touch (minimumDistance: 0 = instant).
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
                     .onChanged { value in
-                        let raw = (value.location.x - 6) / cellWidth
-                        let idx = max(0, min(tabs.count - 1, Int(raw.rounded())))
-                        let target = tabs[idx]
-                        if selectedTab != target {
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                                selectedTab = target
+                        let now = Date()
+                        if !isDraggingTabPill {
+                            isDraggingTabPill = true
+                            lastDragSampleX = value.location.x
+                            lastDragSampleTime = now
+                            let g = UIImpactFeedbackGenerator(style: .soft)
+                            g.impactOccurred()
+                        } else {
+                            let dt = now.timeIntervalSince(lastDragSampleTime)
+                            if dt > 0.001 {
+                                let dx = value.location.x - lastDragSampleX
+                                // 60/40 EMA — responsive to speed changes
+                                // without going twitchy. Pairs with the
+                                // looser spring below for expressive jiggle.
+                                let raw = dx / CGFloat(dt)
+                                tabDragVelocity = tabDragVelocity * 0.6 + raw * 0.4
+                                lastDragSampleX = value.location.x
+                                lastDragSampleTime = now
                             }
+                        }
+                        let pillCenter = baseX + cellWidth / 2
+                        let raw = value.location.x - pillCenter
+                        tabDragX = max(minDragX, min(maxDragX, raw))
+                    }
+                    .onEnded { value in
+                        let totalTravel = abs(value.translation.width)
+                        let isTap = totalTravel < 6
+                        // Snap to the cell the PILL is currently centered on.
+                        // Using value.location.x or predictedEndLocation gave
+                        // off-by-one snaps because the pill center isn't the
+                        // finger location — they're offset.
+                        let pillCenter: CGFloat = isTap
+                            ? value.location.x
+                            : (baseX + cellWidth / 2 + tabDragX)
+                        let rawIdx = (pillCenter - 6 - cellWidth / 2) / cellWidth
+                        let snapIdx = max(0, min(tabs.count - 1, Int(rawIdx.rounded())))
+                        let target = tabs[snapIdx]
+
+                        let g = UIImpactFeedbackGenerator(style: .heavy)
+                        g.impactOccurred()
+                        // Loose release spring — overshoots, wobbles, settles.
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.4)) {
+                            selectedTab = target
+                            tabDragX = 0
+                            isDraggingTabPill = false
+                            tabDragVelocity = 0
                         }
                     }
             )
@@ -636,7 +726,7 @@ struct ContentView: View {
     @ObservedObject private var morphState = MorphState.shared
     @ObservedObject private var deepLink = DeepLinkState.shared
     @State private var selectedTab: TabItem = .home
-    @State private var isKeyboardVisible: Bool = false
+    @ObservedObject private var keyboard = KeyboardMonitor.shared
     @State private var selectedQuest: Quest? = nil
     @State private var sheetQuest: Quest? = nil
     @State private var uploadError: String? = nil
@@ -739,32 +829,37 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             HomeView(selectedQuest: $selectedQuest)
                 .tag(TabItem.home)
+                .toolbar(.hidden, for: .tabBar)
 
             NavigationStack {
                 QuestsView(selectedQuest: $selectedQuest)
+                    .toolbar(.hidden, for: .tabBar)
             }
             .tag(TabItem.quests)
+            .toolbar(.hidden, for: .tabBar)
 
             NavigationStack {
                 LeaderboardView()
+                    .toolbar(.hidden, for: .tabBar)
             }
             .tag(TabItem.leaderboard)
+            .toolbar(.hidden, for: .tabBar)
 
             NavigationStack {
                 if profileVM.isAdmin {
                     SortingView()
+                        .toolbar(.hidden, for: .tabBar)
                 } else {
                     ProfileView()
+                        .toolbar(.hidden, for: .tabBar)
                 }
             }
             .tag(TabItem.profile)
+            .toolbar(.hidden, for: .tabBar)
         }
+        .toolbar(.hidden, for: .tabBar)
         .onAppear {
             UITabBar.appearance().isHidden = true
-            // Prefetch leaderboard once at app launch so the first Standings
-            // tap doesn't kick off Firestore work mid-tab-transition.
-            // Idempotent — repeat onAppear calls (e.g. after sheet dismiss)
-            // do nothing.
             LeaderboardViewModel.shared.prefetchIfNeeded()
         }
     }
@@ -811,7 +906,14 @@ struct ContentView: View {
                     .opacity(0)
                     .allowsHitTesting(false)
             )
-            .overlay(bottomOverlay, alignment: .bottom)
+            .overlay(alignment: .bottom) {
+                bottomOverlay
+                    .opacity(keyboard.isVisible ? 0 : 1)
+                    .scaleEffect(keyboard.isVisible ? 0.85 : 1, anchor: .bottom)
+                    .offset(y: keyboard.isVisible ? 320 : 0)
+                    .allowsHitTesting(!keyboard.isVisible)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.85), value: keyboard.isVisible)
+            }
             .fullScreenCover(item: $sheetQuest, onDismiss: {
                 if !morphState.isComplete {
                     morphState.quest = nil
@@ -837,12 +939,6 @@ struct ContentView: View {
                 // bleed onto HomeView's morph bar.
                 if morphState.quest != nil { morphState.quest = nil }
                 if sheetQuest != nil { sheetQuest = nil }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-                isKeyboardVisible = true
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-                isKeyboardVisible = false
             }
             .onChange(of: selectedQuest != nil) { hasQuest in
                 if hasQuest {

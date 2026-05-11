@@ -23,6 +23,9 @@ struct ProfileView: View {
     @State private var points: Int = 0
     @State private var showLogOutConfirm = false
 
+    private enum EditFocus: Hashable { case name, phone, son(Int), teamName }
+    @FocusState private var focusedField: EditFocus?
+
     private func updateFirestore(key: String, value: Any) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         Firestore.firestore().collection("users").document(uid)
@@ -82,12 +85,57 @@ struct ProfileView: View {
     // MARK: - Hero Card
 
     private var heroCard: some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                heroCardGlass
+            } else {
+                heroCardLegacy
+            }
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private var heroCardGlass: some View {
+        // No outer card glass — that hides/cancels the avatar's glass effect.
+        // Just the avatar gets the Liquid Glass treatment, sitting on the plain
+        // ProfileView background where its refraction + tint are clearly visible.
         VStack(spacing: 14) {
-            // Avatar — material-backed circle with subtle CougarBlue tint
-            // on top. Using .ultraThinMaterial directly gives a visibly
-            // glass surface even when nested inside the heroCard's own
-            // glass background (where stacking glassEffect modifiers
-            // tends to cancel out).
+            Color.clear
+                .frame(width: 96, height: 96)
+                .glassEffect(
+                    .regular.tint(Color.cougarBlue.opacity(0.55)),
+                    in: Circle()
+                )
+                .overlay(
+                    Text(initials.isEmpty ? "?" : initials)
+                        .font(.system(size: 34, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                )
+
+            VStack(spacing: 4) {
+                Text(displayName)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .multilineTextAlignment(.center)
+                if !viewModel.teamName.isEmpty {
+                    Text(viewModel.teamName)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.bottom, 12)
+
+            HStack(spacing: 12) {
+                statTile(value: "\(points)", label: "Points", systemImage: "star.fill")
+                statTile(value: "\(morphState.completedQuestTitles.count)", label: "Completed", systemImage: "checkmark.seal.fill")
+            }
+        }
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var heroCardLegacy: some View {
+        VStack(spacing: 14) {
             ZStack {
                 Circle()
                     .fill(.ultraThinMaterial)
@@ -112,7 +160,6 @@ struct ProfileView: View {
                 }
             }
 
-            // Stats row
             HStack(spacing: 12) {
                 statTile(value: "\(points)", label: "Points", systemImage: "star.fill")
                 statTile(value: "\(morphState.completedQuestTitles.count)", label: "Completed", systemImage: "checkmark.seal.fill")
@@ -162,9 +209,11 @@ struct ProfileView: View {
                 if editingTeamName {
                     TextField("Team Name", text: $viewModel.teamName)
                         .textFieldStyle(.plain)
+                        .focused($focusedField, equals: .teamName)
                         .onSubmit {
                             updateFirestore(key: "teamName", value: viewModel.teamName)
                             editingTeamName = false
+                            focusedField = nil
                         }
                 } else {
                     Text(viewModel.teamName.isEmpty ? "Add a team name" : viewModel.teamName)
@@ -174,8 +223,14 @@ struct ProfileView: View {
                 Button {
                     if editingTeamName {
                         updateFirestore(key: "teamName", value: viewModel.teamName)
+                        editingTeamName = false
+                        focusedField = nil
+                    } else {
+                        editingTeamName = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            focusedField = .teamName
+                        }
                     }
-                    editingTeamName.toggle()
                 } label: {
                     Image(systemName: editingTeamName ? "checkmark" : "pencil")
                         .foregroundColor(.cougarBlue)
@@ -198,6 +253,7 @@ struct ProfileView: View {
                         if isEditingName {
                             VStack(alignment: .leading, spacing: 4) {
                                 TextField("First Name", text: $viewModel.firstName)
+                                    .focused($focusedField, equals: .name)
                                     .onSubmit { updateFirestore(key: "firstName", value: viewModel.firstName) }
                                 TextField("Last Name", text: $viewModel.lastName)
                                     .onSubmit { updateFirestore(key: "lastName", value: viewModel.lastName) }
@@ -210,8 +266,14 @@ struct ProfileView: View {
                             if isEditingName {
                                 updateFirestore(key: "firstName", value: viewModel.firstName)
                                 updateFirestore(key: "lastName", value: viewModel.lastName)
+                                isEditingName = false
+                                focusedField = nil
+                            } else {
+                                isEditingName = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    focusedField = .name
+                                }
                             }
-                            isEditingName.toggle()
                         } label: {
                             Image(systemName: isEditingName ? "checkmark" : "pencil")
                                 .foregroundColor(.cougarBlue)
@@ -228,6 +290,7 @@ struct ProfileView: View {
                     if isEditingPhone && hasPhone {
                         TextField("Phone Number", text: $viewModel.rawPhone)
                             .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .phone)
                             .onChange(of: viewModel.rawPhone) { newValue in
                                 viewModel.rawPhone = viewModel.formatPhone(newValue)
                             }
@@ -243,8 +306,14 @@ struct ProfileView: View {
                         Button {
                             if isEditingPhone {
                                 updateFirestore(key: "phoneNumber", value: viewModel.rawPhone)
+                                isEditingPhone = false
+                                focusedField = nil
+                            } else {
+                                isEditingPhone = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    focusedField = .phone
+                                }
                             }
-                            isEditingPhone.toggle()
                         } label: {
                             Image(systemName: isEditingPhone ? "checkmark" : "pencil")
                                 .foregroundColor(.cougarBlue)
@@ -268,9 +337,11 @@ struct ProfileView: View {
                             .frame(width: 22)
                         if editingSonIndices.contains(idx) {
                             TextField("Son \(idx + 1)", text: $viewModel.sons[idx])
+                                .focused($focusedField, equals: .son(idx))
                                 .onSubmit {
                                     updateFirestore(key: "sons", value: viewModel.sons)
                                     editingSonIndices.remove(idx)
+                                    focusedField = nil
                                 }
                         } else {
                             Text(viewModel.sons[idx].isEmpty ? "Son \(idx + 1)" : viewModel.sons[idx])
@@ -281,8 +352,12 @@ struct ProfileView: View {
                             if editingSonIndices.contains(idx) {
                                 updateFirestore(key: "sons", value: viewModel.sons)
                                 editingSonIndices.remove(idx)
+                                focusedField = nil
                             } else {
                                 editingSonIndices.insert(idx)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    focusedField = .son(idx)
+                                }
                             }
                         } label: {
                             Image(systemName: editingSonIndices.contains(idx) ? "checkmark" : "pencil")

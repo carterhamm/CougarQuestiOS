@@ -31,12 +31,14 @@ struct RegisterView: View {
     private let maxSons = 12
 
     enum Step: Int {
-        case phone = 1, otp, firstName, lastName, sons
+        case phone = 1, otp, name, sons
     }
+    private enum NameField: Hashable { case first, last }
+    @FocusState private var nameFocus: NameField?
 
     init(skipPhoneStep: Bool = false) {
         self.skipPhoneStep = skipPhoneStep
-        _currentStep = State(initialValue: skipPhoneStep ? .firstName : .phone)
+        _currentStep = State(initialValue: skipPhoneStep ? .name : .phone)
     }
 
     private func requestNotificationPermissions() {
@@ -79,7 +81,7 @@ struct RegisterView: View {
                         // is skipped) the back button dismisses the entire
                         // Register flow — previously it was disabled there,
                         // leaving Cancel as the only escape.
-                        if currentStep.rawValue <= (skipPhoneStep ? Step.firstName.rawValue : Step.phone.rawValue) {
+                        if currentStep.rawValue <= (skipPhoneStep ? Step.name.rawValue : Step.phone.rawValue) {
                             presentationMode.wrappedValue.dismiss()
                         } else {
                             previousStep()
@@ -97,10 +99,14 @@ struct RegisterView: View {
             }
         }
         .onAppear {
-            focusStep = skipPhoneStep ? .firstName : .phone
+            focusStep = skipPhoneStep ? .name : .phone
+            if currentStep == .name { nameFocus = .first }
             requestNotificationPermissions()
         }
-        .onChange(of: currentStep) { focusStep = currentStep }
+        .onChange(of: currentStep) {
+            focusStep = currentStep
+            if currentStep == .name { nameFocus = .first }
+        }
         .navigationBarBackButtonHidden(true)
         .accentColor(.cougarBlue)
     }
@@ -112,16 +118,8 @@ struct RegisterView: View {
             phoneEntryView
         case .otp:
             otpEntryView
-        case .firstName:
-            nameEntryView(title: "First Name", text: $firstName) {
-                currentStep = .lastName
-            }
-            .focused($focusStep, equals: .firstName)
-        case .lastName:
-            nameEntryView(title: "Last Name", text: $lastName) {
-                currentStep = .sons
-            }
-            .focused($focusStep, equals: .lastName)
+        case .name:
+            nameEntryView
         case .sons:
             sonsEntryView
         }
@@ -187,23 +185,30 @@ struct RegisterView: View {
         }
     }
 
-    private func nameEntryView(title: String, text: Binding<String>, action: @escaping () -> Void) -> some View {
-        VStack(spacing: 20) {
-            TextField("", text: text, prompt: Text(title).foregroundColor(Color.gray.opacity(0.7)))
-                .font(.system(size: 40, weight: .bold))
-                .foregroundColor(.primary)
-                .padding(.vertical, 12)
-                .padding(.horizontal, 8)
-                .submitLabel(.next)
-                .onSubmit {
-                    if !text.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty {
-                        action()
-                    }
+    private var nameEntryView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Your name")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Text("So your sons see who's leading the team.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 4)
+
+            VStack(spacing: 12) {
+                fieldRow(label: "First name", text: $firstName, focus: .first, submit: .next) {
+                    nameFocus = .last
                 }
+                fieldRow(label: "Last name", text: $lastName, focus: .last, submit: .done) {
+                    if canContinueFromName { currentStep = .sons }
+                }
+            }
+
             Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .soft)
-                generator.impactOccurred()
-                action()
+                let g = UIImpactFeedbackGenerator(style: .soft); g.impactOccurred()
+                currentStep = .sons
             }) {
                 Text("Continue")
                     .fontWeight(.bold)
@@ -213,53 +218,102 @@ struct RegisterView: View {
                     .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(text.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
+            .disabled(!canContinueFromName)
         }
     }
 
+    private var canContinueFromName: Bool {
+        !firstName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !lastName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private func fieldRow(
+        label: String,
+        text: Binding<String>,
+        focus: NameField,
+        submit: SubmitLabel,
+        onSubmit: @escaping () -> Void
+    ) -> some View {
+        TextField("", text: text, prompt: Text(label).foregroundColor(.secondary))
+            .font(.system(size: 22, weight: .semibold))
+            .foregroundColor(.primary)
+            .textContentType(focus == .first ? .givenName : .familyName)
+            .textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.cougarBlue.opacity(0.08))
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(
+                        nameFocus == focus
+                            ? Color.cougarBlue.opacity(0.55)
+                            : Color.cougarBlue.opacity(0.18),
+                        lineWidth: nameFocus == focus ? 1.5 : 1
+                    )
+            )
+            .focused($nameFocus, equals: focus)
+            .submitLabel(submit)
+            .onSubmit(onSubmit)
+    }
+
     private var sonsEntryView: some View {
-        VStack(spacing: 20) {
-            ForEach(sons.indices, id: \.self) { idx in
-                HStack {
-                    // For the first TextField, add .focused and remove font(.system(size: 30, weight: .bold))
-                    Group {
-                        if idx == 0 {
-                            TextField("", text: $sons[idx], prompt: Text("Son \(idx+1) Name").foregroundColor(Color.gray.opacity(0.7)))
-                                .font(.system(size: 40, weight: .bold))
-                                .foregroundColor(.primary)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, 8)
-                                .focused($focusStep, equals: .sons)
-                        } else {
-                            TextField("", text: $sons[idx], prompt: Text("Son \(idx + 1) Name")
-                                .font(.system(size: 40, weight: .bold))
-                                .foregroundColor(Color.gray.opacity(0.7)))
-                                .font(.system(size: 30, weight: .bold))
-                                .foregroundColor(.primary)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, 8)
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Your team")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Text("Add the sons coming with you. You can edit this later.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 4)
+
+            VStack(spacing: 10) {
+                ForEach(sons.indices, id: \.self) { idx in
+                    sonRow(idx: idx)
+                }
+
+                if sons.count < maxSons {
+                    Button {
+                        let g = UIImpactFeedbackGenerator(style: .light); g.impactOccurred()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                            sons.append("")
                         }
-                    }
-                    if sons.count > 1 {
-                        Button {
-                            sons.remove(at: idx)
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .foregroundColor(.red)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            focusStep = .sons
                         }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Add another son")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(.cougarBlue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(
+                                    Color.cougarBlue.opacity(0.45),
+                                    style: StrokeStyle(lineWidth: 1.2, dash: [5, 4])
+                                )
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            if sons.count < maxSons {
-                Button {
-                    sons.append("")
-                } label: {
-                    Label("Add Son", systemImage: "plus.circle")
-                }
-            }
+
             Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .soft)
-                generator.impactOccurred()
+                let g = UIImpactFeedbackGenerator(style: .soft); g.impactOccurred()
                 finalizeRegistration()
             }) {
                 Text("Register")
@@ -270,8 +324,58 @@ struct RegisterView: View {
                     .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(sons.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.isEmpty)
+            .disabled(sons.allSatisfy { $0.trimmingCharacters(in: .whitespaces).isEmpty })
         }
+    }
+
+    private func sonRow(idx: Int) -> some View {
+        HStack(spacing: 12) {
+            Text("\(idx + 1)")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(.cougarBlue)
+                .frame(width: 28, height: 28)
+                .background(
+                    Circle().fill(Color.cougarBlue.opacity(0.14))
+                )
+
+            TextField("", text: $sons[idx], prompt: Text("Son's name").foregroundColor(.secondary))
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.primary)
+                .textContentType(.name)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .focused($focusStep, equals: idx == 0 ? .sons : nil)
+
+            if sons.count > 1 {
+                Button {
+                    let g = UIImpactFeedbackGenerator(style: .light); g.impactOccurred()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        sons.remove(at: idx)
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.secondary.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.cougarBlue.opacity(0.06))
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.cougarBlue.opacity(0.18), lineWidth: 1)
+        )
     }
 
     private func sendOTP() {
@@ -319,7 +423,7 @@ struct RegisterView: View {
                         } else {
                             // New user: proceed to collect name
                             phoneCredential = credential
-                            currentStep = .firstName
+                            currentStep = .name
                         }
                     }
                 }

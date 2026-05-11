@@ -36,7 +36,14 @@ struct QuestsView: View {
                 MapAnnotation(coordinate: item.coordinate) {
                     let isCompleted = morphState.completedQuestTitles.contains(item.quest.title)
                     Button {
-                        selectedQuest = item.quest
+                        // Wrap the selectedQuest change in a spring so the
+                        // FloatingTabBar's expandedQuestContent transition
+                        // (.move(.bottom) + .opacity) actually plays on open.
+                        // Without an explicit animation context, the insertion
+                        // snapped in even though the close animated out.
+                        withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                            selectedQuest = item.quest
+                        }
                         withAnimation(.easeInOut(duration: 0.6)) {
                             region.center = item.coordinate
                             region.span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
