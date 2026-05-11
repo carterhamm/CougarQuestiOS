@@ -26,6 +26,8 @@ struct RegisterView: View {
     @State private var sons: [String] = [""]
     @State private var errorMessage: String?
     @State private var phoneCredential: AuthCredential?
+    @State private var isSendingOTP: Bool = false
+    @State private var isVerifyingOTP: Bool = false
     @FocusState private var focusStep: Step?
 
     private let maxSons = 12
@@ -144,16 +146,22 @@ struct RegisterView: View {
                 generator.impactOccurred()
                 sendOTP()
             }) {
-                Text("Send Code")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
-                    .contentShape(Capsule())
+                HStack(spacing: 8) {
+                    if isSendingOTP {
+                        ProgressView()
+                            .tint(.white)
+                    }
+                    Text(isSendingOTP ? "Sending…" : "Send Code")
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
+                .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(phoneNumber.filter { $0.isNumber }.count < 10)
+            .disabled(isSendingOTP || phoneNumber.filter { $0.isNumber }.count < 10)
         }
     }
 
@@ -174,16 +182,22 @@ struct RegisterView: View {
                 generator.impactOccurred()
                 verifyOTP()
             }) {
-                Text("Verify Code")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
-                    .contentShape(Capsule())
+                HStack(spacing: 8) {
+                    if isVerifyingOTP {
+                        ProgressView()
+                            .tint(.white)
+                    }
+                    Text(isVerifyingOTP ? "Verifying…" : "Verify Code")
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .adaptiveGlassEffectTinted(color: Color.cougarBlue, in: Capsule())
+                .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(otpCode.count < 6)
+            .disabled(isVerifyingOTP || otpCode.count < 6)
         }
     }
 
@@ -381,6 +395,10 @@ struct RegisterView: View {
     }
 
     private func sendOTP() {
+        // In-flight gate: prevent double-send if user taps twice quickly.
+        // The button is already disabled visually when isSendingOTP, but
+        // tap events queued before the render update could still arrive.
+        guard !isSendingOTP else { return }
         errorMessage = nil
         let digits = phoneNumber.filter { $0.isNumber }
         guard digits.count == 10 else {
@@ -393,8 +411,10 @@ struct RegisterView: View {
         #endif
         let generator = UIImpactFeedbackGenerator(style: .soft)
         generator.impactOccurred()
+        isSendingOTP = true
         PhoneAuthProvider.provider().verifyPhoneNumber(fullPhone, uiDelegate: nil) { id, error in
             DispatchQueue.main.async {
+                isSendingOTP = false
                 if let error = error {
                     errorMessage = error.localizedDescription
                 } else {
@@ -406,13 +426,16 @@ struct RegisterView: View {
     }
 
     private func verifyOTP() {
+        guard !isVerifyingOTP else { return }
         let generator = UIImpactFeedbackGenerator(style: .soft)
         generator.impactOccurred()
         guard let id = verificationID else { return }
+        isVerifyingOTP = true
         let credential = PhoneAuthProvider.provider()
             .credential(withVerificationID: id, verificationCode: otpCode.trimmingCharacters(in: .whitespaces))
         Auth.auth().signIn(with: credential) { result, error in
             DispatchQueue.main.async {
+                isVerifyingOTP = false
                 if let error = error {
                     errorMessage = error.localizedDescription
                 } else if let user = result?.user {

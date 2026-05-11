@@ -904,13 +904,12 @@ struct ContentView: View {
                     .allowsHitTesting(false)
             )
             .overlay(alignment: .bottom) {
-                bottomOverlay
-                    .opacity(keyboard.isVisible ? 0 : 1)
-                    .scaleEffect(keyboard.isVisible ? 0.85 : 1, anchor: .bottom)
-                    .offset(y: keyboard.isVisible ? 320 : 0)
-                    .allowsHitTesting(!keyboard.isVisible)
-                    .animation(.spring(response: 0.32, dampingFraction: 0.85), value: keyboard.isVisible)
+                if !keyboard.isVisible {
+                    bottomOverlay
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .animation(.spring(response: 0.32, dampingFraction: 0.85), value: keyboard.isVisible)
             .fullScreenCover(item: $sheetQuest, onDismiss: {
                 if !morphState.isComplete {
                     morphState.quest = nil

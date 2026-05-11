@@ -394,6 +394,43 @@ struct ProfileView: View {
     private var sonsCard: some View {
         cardContainer(title: "Sons", icon: "person.2.fill") {
             VStack(spacing: 12) {
+                // Empty-state CTA when the parent hasn't added any sons yet.
+                if viewModel.sons.isEmpty {
+                    Button {
+                        let g = UIImpactFeedbackGenerator(style: .light); g.impactOccurred()
+                        viewModel.sons.append("")
+                        editingSonIndices = [0]
+                        updateFirestore(key: "sons", value: viewModel.sons)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            focusedField = .son(0)
+                        }
+                    } label: {
+                        VStack(spacing: 8) {
+                            Image(systemName: "person.2.badge.plus")
+                                .font(.system(size: 28))
+                                .foregroundColor(.cougarBlue)
+                            Text("Add your sons")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.cougarBlue)
+                            Text("Show who's on your team.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(
+                                    Color.cougarBlue.opacity(0.45),
+                                    style: StrokeStyle(lineWidth: 1.3, dash: [5, 4])
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 ForEach(Array(viewModel.sons.enumerated()), id: \.offset) { idx, _ in
                     HStack {
                         Image(systemName: "person.fill")

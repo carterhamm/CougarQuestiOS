@@ -284,6 +284,13 @@ struct SignInView: View {
             errorMessage = "❌ No root view controller"
             return
         }
+        // Clear any stale Firebase Auth session before kicking off the
+        // OAuth flow. Without this, a leftover token from a previous
+        // session (different team, different provider, etc.) can cause
+        // "Invalid user token: accessToken or refreshToken is nil".
+        try? Auth.auth().signOut()
+        GIDSignIn.sharedInstance.signOut()
+
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
         GIDSignIn.sharedInstance.signIn(withPresenting: root) { result, error in
             if let error = error {
@@ -291,7 +298,13 @@ struct SignInView: View {
                 return
             }
             guard let result = result, let idTokenObj = result.user.idToken else {
-                errorMessage = "❌ Missing Google tokens"
+                errorMessage = "Couldn't get Google tokens. Please try again."
+                return
+            }
+            let idTokenString = idTokenObj.tokenString
+            let accessTokenString = result.user.accessToken.tokenString
+            guard !idTokenString.isEmpty, !accessTokenString.isEmpty else {
+                errorMessage = "Google returned empty tokens. Please try again."
                 return
             }
             // Extract profile data directly from Google result
@@ -300,12 +313,12 @@ struct SignInView: View {
             let fullName = [resultGiven, resultFamily].filter { !$0.isEmpty }.joined(separator: " ")
             let emailFromGoogle = result.user.profile?.email ?? ""
             let credential = GoogleAuthProvider.credential(
-                withIDToken: idTokenObj.tokenString,
-                accessToken: result.user.accessToken.tokenString
+                withIDToken: idTokenString,
+                accessToken: accessTokenString
             )
             Auth.auth().signIn(with: credential) { _, authError in
                 if let authError = authError {
-                    errorMessage = "Firebase sign-in error: \(authError.localizedDescription)"
+                    errorMessage = "Sign-in failed: \(authError.localizedDescription) Please try again."
                     return
                 }
                 guard let user = Auth.auth().currentUser else { return }
