@@ -821,39 +821,42 @@ struct ContentView: View {
         }
     }
 
-    /// TabView with the .page style — has no tab bar at all (page-style
-    /// renders a horizontal pager). Tab selection is driven entirely by the
-    /// custom FloatingTabBar via `selection: $selectedTab`. iOS 26's
-    /// floating system tab bar is only rendered for the default tab style,
-    /// not for .page, so this definitively suppresses it. Per-tab state
-    /// is preserved (HomeView's path, QuestsView's region, etc.).
     @ViewBuilder
     private var mainContent: some View {
         TabView(selection: $selectedTab) {
             HomeView(selectedQuest: $selectedQuest)
                 .tag(TabItem.home)
+                .toolbar(.hidden, for: .tabBar)
 
             NavigationStack {
                 QuestsView(selectedQuest: $selectedQuest)
+                    .toolbar(.hidden, for: .tabBar)
             }
             .tag(TabItem.quests)
+            .toolbar(.hidden, for: .tabBar)
 
             NavigationStack {
                 LeaderboardView()
+                    .toolbar(.hidden, for: .tabBar)
             }
             .tag(TabItem.leaderboard)
+            .toolbar(.hidden, for: .tabBar)
 
             NavigationStack {
                 if profileVM.isAdmin {
                     SortingView()
+                        .toolbar(.hidden, for: .tabBar)
                 } else {
                     ProfileView()
+                        .toolbar(.hidden, for: .tabBar)
                 }
             }
             .tag(TabItem.profile)
+            .toolbar(.hidden, for: .tabBar)
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
+        .toolbar(.hidden, for: .tabBar)
         .onAppear {
+            UITabBar.appearance().isHidden = true
             LeaderboardViewModel.shared.prefetchIfNeeded()
         }
     }

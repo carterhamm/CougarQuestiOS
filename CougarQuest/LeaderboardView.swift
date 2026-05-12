@@ -356,11 +356,17 @@ class LeaderboardViewModel: ObservableObject {
         return users.first(where: { $0.id == uid })
     }
 
+    /// Hard-coded season start. Users created before this date AND users
+    /// with zero current-season points are filtered out of the leaderboard.
+    private static let seasonStart: Date = {
+        var c = DateComponents()
+        c.year = 2026; c.month = 5; c.day = 15
+        return Calendar.current.date(from: c) ?? Date.distantPast
+    }()
+
     func fetchLeaderboard() {
-        // Fetch all users, sort in-memory by currentSeasonPoints. We avoid
-        // Firestore's order(by:) here because it would silently drop docs
-        // that don't yet have the field — and that field is backfilled lazily
-        // via the auth listener (existing users get it on next sign-in).
+        // Fetch all users, filter and sort in-memory. We avoid Firestore's
+        // order(by:) because it silently drops docs missing the field.
         db.collection("users")
             .getDocuments { snapshot, error in
                 guard let docs = snapshot?.documents else { return }
@@ -368,6 +374,18 @@ class LeaderboardViewModel: ObservableObject {
                 var temp: [LeaderboardUser] = []
                 for doc in docs {
                     let data = doc.data()
+
+                    // Filter 1: only current-season users.
+                    // createdAt is a Timestamp set on first signup. Anyone
+                    // who joined before seasonStart is from a prior year
+                    // and shouldn't appear in this season's rankings.
+                    guard let createdAt = (data["createdAt"] as? Timestamp)?.dateValue(),
+                          createdAt >= Self.seasonStart else { continue }
+
+                    // Filter 2: hide zero-point users until they score.
+                    let pts = data["currentSeasonPoints"] as? Int ?? 0
+                    guard pts > 0 else { continue }
+
                     let teamName = (data["teamName"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                     var displayName: String
 
@@ -397,9 +415,6 @@ class LeaderboardViewModel: ObservableObject {
                         if displayName.isEmpty { displayName = "Unnamed user" }
                     }
 
-                    // Per-season points; defaults to 0 for legacy docs that
-                    // haven't been touched by the new auth listener yet.
-                    let pts = data["currentSeasonPoints"] as? Int ?? 0
                     temp.append(.init(id: doc.documentID, displayName: displayName, points: pts))
                 }
 
