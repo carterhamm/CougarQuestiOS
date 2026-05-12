@@ -720,7 +720,7 @@ struct ContentView: View {
     @ObservedObject private var morphState = MorphState.shared
     @ObservedObject private var deepLink = DeepLinkState.shared
     @State private var selectedTab: TabItem = .home
-    @ObservedObject private var keyboard = KeyboardMonitor.shared
+    @State private var isKeyboardVisible: Bool = false
     @State private var selectedQuest: Quest? = nil
     @State private var sheetQuest: Quest? = nil
     @State private var uploadError: String? = nil
@@ -904,12 +904,19 @@ struct ContentView: View {
                     .allowsHitTesting(false)
             )
             .overlay(alignment: .bottom) {
-                if !keyboard.isVisible {
+                if !isKeyboardVisible {
                     bottomOverlay
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .animation(.spring(response: 0.32, dampingFraction: 0.85), value: keyboard.isVisible)
+            .animation(.spring(response: 0.32, dampingFraction: 0.85), value: isKeyboardVisible)
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                isKeyboardVisible = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                isKeyboardVisible = false
+            }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
             .fullScreenCover(item: $sheetQuest, onDismiss: {
                 if !morphState.isComplete {
                     morphState.quest = nil
