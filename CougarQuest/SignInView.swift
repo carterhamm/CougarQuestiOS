@@ -33,13 +33,27 @@ class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAut
             let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
             let identityTokenData = appleIDCredential.identityToken,
             let idTokenString = String(data: identityTokenData, encoding: .utf8)
-        else { return }
-        
+        else {
+            errorMessage = "Couldn't read Apple credentials. Please try again."
+            return
+        }
+        // Reject empty tokens — Firebase Auth then throws the cryptic
+        // "Invalid user token: accessToken or refreshToken is nil" which
+        // confused a tester. Surface a clear retry prompt instead.
+        guard !idTokenString.isEmpty else {
+            errorMessage = "Apple returned an empty token. Please try again."
+            return
+        }
+        // Clear any stale Firebase session that could conflict with the
+        // new credential (returning users from the BYU-account era hit
+        // this — old session interferes with the new team's auth flow).
+        try? Auth.auth().signOut()
+
         let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: "")
         Auth.auth().signIn(with: credential) { [weak self] authResult, error in
             guard let self = self else { return }
             if let error = error {
-                self.errorMessage = "Firebase sign-in error: \(error.localizedDescription)"
+                self.errorMessage = "Sign-in failed: \(error.localizedDescription) Please try again."
                 return
             }
             guard let user = authResult?.user else { return }

@@ -821,37 +821,38 @@ struct ContentView: View {
         }
     }
 
-    /// No TabView. iOS 26's new floating tab bar can't be reliably suppressed
-    /// (`.toolbar(.hidden, for: .tabBar)` is unreliable, and the new bar
-    /// isn't a `UITabBarController` so UIKit shims can't reach it either).
-    /// Switch-based mount = no TabView = no system tab bar, period.
-    /// Trade-off: a tab's local state (nav stack, scroll position) resets on
-    /// switch. Shared state (LeaderboardViewModel.shared, MorphState.shared,
-    /// Firestore listeners) survives. Acceptable for this app.
+    /// TabView with the .page style — has no tab bar at all (page-style
+    /// renders a horizontal pager). Tab selection is driven entirely by the
+    /// custom FloatingTabBar via `selection: $selectedTab`. iOS 26's
+    /// floating system tab bar is only rendered for the default tab style,
+    /// not for .page, so this definitively suppresses it. Per-tab state
+    /// is preserved (HomeView's path, QuestsView's region, etc.).
     @ViewBuilder
     private var mainContent: some View {
-        Group {
-            switch selectedTab {
-            case .home:
-                HomeView(selectedQuest: $selectedQuest)
-            case .quests:
-                NavigationStack {
-                    QuestsView(selectedQuest: $selectedQuest)
-                }
-            case .leaderboard:
-                NavigationStack {
-                    LeaderboardView()
-                }
-            case .profile:
-                NavigationStack {
-                    if profileVM.isAdmin {
-                        SortingView()
-                    } else {
-                        ProfileView()
-                    }
+        TabView(selection: $selectedTab) {
+            HomeView(selectedQuest: $selectedQuest)
+                .tag(TabItem.home)
+
+            NavigationStack {
+                QuestsView(selectedQuest: $selectedQuest)
+            }
+            .tag(TabItem.quests)
+
+            NavigationStack {
+                LeaderboardView()
+            }
+            .tag(TabItem.leaderboard)
+
+            NavigationStack {
+                if profileVM.isAdmin {
+                    SortingView()
+                } else {
+                    ProfileView()
                 }
             }
+            .tag(TabItem.profile)
         }
+        .tabViewStyle(.page(indexDisplayMode: .never))
         .onAppear {
             LeaderboardViewModel.shared.prefetchIfNeeded()
         }
