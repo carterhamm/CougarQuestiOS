@@ -281,26 +281,38 @@ struct FloatingTabBar: View {
                 .scaleEffect(x: liftScaleX * stretchX, y: liftScaleY * squashY, anchor: .center)
                 .offset(x: baseX + tabDragX)
                 .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.65), value: tabDragX)
-                .animation(.spring(response: 0.35, dampingFraction: 0.72), value: selectedTab)
+                .animation(.spring(response: 0.55, dampingFraction: 0.85), value: selectedTab)
                 .animation(.spring(response: 0.4, dampingFraction: 0.4), value: isDraggingTabPill)
                 .animation(.spring(response: 0.3, dampingFraction: 0.42), value: tabDragVelocity)
                 .zIndex(isDraggingTabPill ? 2 : 0)
 
                 HStack(spacing: 0) {
                     ForEach(TabItem.allCases) { tab in
+                        let isActive = selectedTab == tab
                         VStack(spacing: 2) {
                             Image(systemName: tab.icon)
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 16, weight: .semibold))
                             Text(tab.title)
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: 10, weight: .semibold))
                         }
-                        // White text + strong dark drop-shadow is what photo
-                        // apps use because it's readable on any background.
-                        // Dual-shadow halos cancel on neutral surfaces.
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.65), radius: 2.5, x: 0, y: 1)
-                        .shadow(color: .black.opacity(0.4), radius: 5, x: 0, y: 1)
+                        // Active = white on CougarBlue pill. Inactive =
+                        // .primary, which gets *true* dynamic contrast via
+                        // SwiftUI's Material vibrancy when on a Material
+                        // backdrop. Material samples what's behind it and
+                        // shifts .primary toward whichever color reads —
+                        // dark on light photos, light on dark photos, all
+                        // automatic. No shadow hack.
+                        .foregroundStyle(isActive ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                         .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background {
+                            if !isActive {
+                                Capsule()
+                                    .fill(.regularMaterial)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 6)
+                            }
+                        }
                         .frame(height: 68)
                         .contentShape(Rectangle())
                     }
@@ -354,11 +366,10 @@ struct FloatingTabBar: View {
 
                         let g = UIImpactFeedbackGenerator(style: .heavy)
                         g.impactOccurred()
-                        // Tap = snappy, controlled spring (the OLD behavior
-                        // the user liked for tab switching). Drag release =
-                        // loose, bouncy spring with overshoot.
+                        // Tap = smooth glide, fully damped (no bounce).
+                        // Drag release = loose, bouncy spring with overshoot.
                         let snapAnimation: Animation = isTap
-                            ? .spring(response: 0.35, dampingFraction: 0.72)
+                            ? .spring(response: 0.55, dampingFraction: 0.85)
                             : .spring(response: 0.6, dampingFraction: 0.4)
                         withAnimation(snapAnimation) {
                             selectedTab = target
