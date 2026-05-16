@@ -290,17 +290,16 @@ struct FloatingTabBar: View {
                     ForEach(TabItem.allCases) { tab in
                         VStack(spacing: 2) {
                             Image(systemName: tab.icon)
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.system(size: 16, weight: .bold))
                             Text(tab.title)
-                                .font(.system(size: 10))
+                                .font(.system(size: 10, weight: .bold))
                         }
-                        .foregroundColor(selectedTab == tab ? .white : .primary)
-                        // Dual-direction shadow gives an adaptive halo around
-                        // each label so it stays readable regardless of what
-                        // colour bleeds through the glass — light photos in
-                        // dark mode were washing the labels out.
-                        .shadow(color: .black.opacity(0.35), radius: 1.5, x: 0, y: 0)
-                        .shadow(color: .white.opacity(0.25), radius: 1, x: 0, y: 0)
+                        // White text + strong dark drop-shadow is what photo
+                        // apps use because it's readable on any background.
+                        // Dual-shadow halos cancel on neutral surfaces.
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.65), radius: 2.5, x: 0, y: 1)
+                        .shadow(color: .black.opacity(0.4), radius: 5, x: 0, y: 1)
                         .frame(maxWidth: .infinity)
                         .frame(height: 68)
                         .contentShape(Rectangle())
@@ -775,7 +774,7 @@ struct ContentView: View {
         }
     }
 
-    private let islandAnimation = Animation.spring(response: 0.55, dampingFraction: 0.85)
+    private let islandAnimation = Animation.spring(response: 0.6, dampingFraction: 0.75)
 
     private func uploadPhoto(_ image: UIImage, for quest: Quest) {
         guard let uid = Auth.auth().currentUser?.uid else {

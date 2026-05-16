@@ -28,21 +28,39 @@ struct LeaderboardView: View {
             // content size, which made `.padding(.top, 80)` the best we
             // could do before. ZStack centers by default.
             if viewModel.users.isEmpty && viewModel.hasLoaded {
-                VStack(spacing: 14) {
-                    Image(systemName: "trophy")
-                        .font(.largeTitle)
-                        .foregroundColor(.cougarBlue)
-                    Text("No players yet this season")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.cougarBlue)
+                VStack(spacing: 22) {
+                    // Trophy in a tinted glass medallion — gives the empty
+                    // state real visual weight instead of a lonely icon.
+                    Color.clear
+                        .frame(width: 120, height: 120)
+                        .adaptiveGlassEffectTinted(
+                            color: Color.cougarBlue.opacity(0.22),
+                            in: Circle()
+                        )
+                        .overlay(
+                            Image(systemName: "trophy.fill")
+                                .font(.system(size: 48, weight: .bold))
+                                .foregroundColor(.cougarBlue)
+                        )
+
+                    VStack(spacing: 8) {
+                        Text("The Leaderboard")
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundColor(.cougarBlue)
+                        Text("Awaits its first champion.")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.cougarBlue.opacity(0.85))
+                            .multilineTextAlignment(.center)
+                    }
+
+                    Text("Complete a quest to claim the top spot.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                    Text("Complete a quest to claim the first spot.")
-                        .font(.caption)
-                        .foregroundColor(.cougarBlue.opacity(0.7))
-                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
                 }
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 32)
             } else if viewModel.users.isEmpty {
                 ProgressView()
             } else {
