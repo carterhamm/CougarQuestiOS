@@ -281,7 +281,7 @@ struct FloatingTabBar: View {
                 .scaleEffect(x: liftScaleX * stretchX, y: liftScaleY * squashY, anchor: .center)
                 .offset(x: baseX + tabDragX)
                 .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.65), value: tabDragX)
-                .animation(.spring(response: 0.55, dampingFraction: 0.42), value: selectedTab)
+                .animation(.spring(response: 0.35, dampingFraction: 0.72), value: selectedTab)
                 .animation(.spring(response: 0.4, dampingFraction: 0.4), value: isDraggingTabPill)
                 .animation(.spring(response: 0.3, dampingFraction: 0.42), value: tabDragVelocity)
                 .zIndex(isDraggingTabPill ? 2 : 0)
@@ -295,6 +295,12 @@ struct FloatingTabBar: View {
                                 .font(.system(size: 10))
                         }
                         .foregroundColor(selectedTab == tab ? .white : .primary)
+                        // Dual-direction shadow gives an adaptive halo around
+                        // each label so it stays readable regardless of what
+                        // colour bleeds through the glass — light photos in
+                        // dark mode were washing the labels out.
+                        .shadow(color: .black.opacity(0.35), radius: 1.5, x: 0, y: 0)
+                        .shadow(color: .white.opacity(0.25), radius: 1, x: 0, y: 0)
                         .frame(maxWidth: .infinity)
                         .frame(height: 68)
                         .contentShape(Rectangle())
@@ -349,8 +355,13 @@ struct FloatingTabBar: View {
 
                         let g = UIImpactFeedbackGenerator(style: .heavy)
                         g.impactOccurred()
-                        // Loose release spring — overshoots, wobbles, settles.
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.4)) {
+                        // Tap = snappy, controlled spring (the OLD behavior
+                        // the user liked for tab switching). Drag release =
+                        // loose, bouncy spring with overshoot.
+                        let snapAnimation: Animation = isTap
+                            ? .spring(response: 0.35, dampingFraction: 0.72)
+                            : .spring(response: 0.6, dampingFraction: 0.4)
+                        withAnimation(snapAnimation) {
                             selectedTab = target
                             tabDragX = 0
                             isDraggingTabPill = false
@@ -764,7 +775,7 @@ struct ContentView: View {
         }
     }
 
-    private let islandAnimation = Animation.spring(response: 0.65, dampingFraction: 0.65, blendDuration: 0.85)
+    private let islandAnimation = Animation.spring(response: 0.55, dampingFraction: 0.85)
 
     private func uploadPhoto(_ image: UIImage, for quest: Quest) {
         guard let uid = Auth.auth().currentUser?.uid else {

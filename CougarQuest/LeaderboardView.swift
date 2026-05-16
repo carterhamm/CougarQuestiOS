@@ -23,28 +23,31 @@ struct LeaderboardView: View {
             (colorScheme == .dark ? Color.black : appleLightGray)
                 .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    if viewModel.users.isEmpty {
-                        if viewModel.hasLoaded {
-                            VStack(spacing: 12) {
-                                Image(systemName: "trophy")
-                                    .font(.largeTitle)
-                                    .foregroundColor(.secondary)
-                                Text("No players yet this season")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Text("Complete a quest to claim the first spot.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .padding(.top, 80)
-                        } else {
-                            ProgressView()
-                                .padding(.top, 60)
-                        }
-                    } else {
+            // Empty state lives OUTSIDE the ScrollView so it can center on
+            // the actual viewport — a ScrollView's child only knows its own
+            // content size, which made `.padding(.top, 80)` the best we
+            // could do before. ZStack centers by default.
+            if viewModel.users.isEmpty && viewModel.hasLoaded {
+                VStack(spacing: 14) {
+                    Image(systemName: "trophy")
+                        .font(.largeTitle)
+                        .foregroundColor(.cougarBlue)
+                    Text("No players yet this season")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.cougarBlue)
+                        .multilineTextAlignment(.center)
+                    Text("Complete a quest to claim the first spot.")
+                        .font(.caption)
+                        .foregroundColor(.cougarBlue.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 40)
+            } else if viewModel.users.isEmpty {
+                ProgressView()
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
                         if viewModel.users.count >= 1 {
                             PodiumSection(
                                 users: Array(viewModel.users.prefix(3)),
@@ -61,11 +64,9 @@ struct LeaderboardView: View {
                             currentUID: Auth.auth().currentUser?.uid
                         )
                     }
-
-                    Color.clear.frame(height: 120)
                 }
+                .refreshable { viewModel.fetchLeaderboard() }
             }
-            .refreshable { viewModel.fetchLeaderboard() }
         }
         .navigationTitle("Leaderboard")
         .navigationBarTitleDisplayMode(.inline)
